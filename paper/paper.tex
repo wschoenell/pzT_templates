@@ -1,0 +1,236 @@
+\documentclass[a4paper, useAMS, usenatbib, hyperpdf]{mn2e}
+
+% Figures
+\usepackage{graphicx}
+
+% Journal abreviations
+\usepackage{aas_macros}
+
+% References
+%\bibliographystyle{mn2e}
+\bibliographystyle{mn2efx}
+
+% Urls
+\usepackage[breaklinks=true]{hyperref}
+
+% Definitions
+\usepackage{xspace}
+
+% For the final version
+\DeclareGraphicsExtensions{.ps, .eps}
+
+% For the draft - do not uncomment
+%\DeclareGraphicsExtensions{.png}
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{graphicx}
+\usepackage[normalem]{ulem}
+\usepackage{color}
+\usepackage{textcomp}
+\usepackage[T1]{fontenc} %required for MNRAS submission
+\usepackage{aecompl}	 %required for MNRAS submission
+\pdfminorversion=5 	 %required for MNRAS submission
+%%%%% AUTHORS - PLACE YOUR OWN MACROS HERE %%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\starlight{\textsc{starlight}\xspace}                 %Starlight%
+
+\newcommand{\msun}{~M$_{\odot}$}
+\newcommand{\rsun}{~R$_{\odot}$}
+\newcommand{\lsun}{~L$_{\odot}$}
+\newcommand{\zsun}{Z$_{\odot}$}
+\newcommand{\mdot}{$\dot M$}
+
+\newcommand{\cmcub}{~cm$^{-3}$}
+\newcommand{\kms}{~km~s$^{-1}$}
+\newcommand{\ergs}{~erg~s$^{-1}$}
+\newcommand{\ergsa}{~erg~s$^{-1}$~cm$^{-2}$~\AA$^{-1}$}
+\newcommand{\ergcmsq}{~erg~cm$^{-2}$~s$^{-1}$}
+\newcommand{\ergcmcubs}{~erg~cm$^{-3}$~s$^{-1}$}
+\newcommand{\Msyr}{~M$_{\odot}$~yr^${-1}$}
+
+
+\newcommand{\qh}{$Q({\rm{H^{0}}})$}
+\newcommand{\qhe}{$Q({\rm{He^{0}}})$}
+\newcommand{\qhep}{$Q({\rm{He^{+}}})$}
+
+\newcommand{\nhe}{n_{\mathrm{He}}/n_{\mathrm{H}}}
+\newcommand{\nh}{$n({\rm{H}})$}
+\newcommand{\nhp}{$n({\rm{H^{+}}})$}
+\newcommand{\Te}{$T_{e}$}
+\newcommand{\Tstar}{$T_{\star}$}
+\newcommand{\Lstar}{$L_{\star}$}
+\newcommand{\Mstar}{$M_{\star}$}
+\newcommand{\Teff}{\ensuremath{T_{\rm{eff}}}}
+\newcommand{\Teq}{$T_{\rm{equiv}}$}
+\newcommand{\Mup}{$M_{\rm{up}}$}
+\newcommand{\Mlow}{$M_{\rm{low}}$}
+\newcommand{\Mneb}{$M_{\rm{neb}}$}
+\newcommand{\Mdot}{$\dot{M}$}
+\newcommand{\Mi}{$M_{\circ}$}
+
+
+\newcommand{\Troiii}{$T_{{\rm [O\ III]}4363/5007}$}
+
+\newcommand{\Ha}{H$\alpha$}
+\newcommand{\Hb}{H$\beta$}
+%\newcommand{\Hb}{\ifmmode {\rm H}\beta\xspace \else H$\beta$\xspace\fi}
+\newcommand{\hi}{H~{\sc i}}
+\newcommand{\hii}{H~{\sc ii}}
+\newcommand{\hei}{He~{\sc i}}
+\newcommand{\Hei}{He~{\sc i} $\lambda$5876}
+\newcommand{\heii}{He~{\sc ii}}
+\newcommand{\Heii}{He~{\sc ii} $\lambda$4686}
+\newcommand{\Nii}{[N~{\sc ii}] $\lambda$6584}
+\newcommand{\nii}{[N~{\sc ii}]}
+\newcommand{\Oi}{[O~{\sc i}] $\lambda$6300}
+\newcommand{\oi}{[O~{\sc i}]}
+\newcommand{\Oii}{[O~{\sc ii}] $\lambda$3727}
+\newcommand{\oii}{[O~{\sc ii}]}
+\newcommand{\Oiii}{[O~{\sc iii}] $\lambda$5007}
+\newcommand{\Oiiit}{[O~{\sc iii}] $\lambda$4363}
+\newcommand{\oiii}{[O~{\sc iii}]}
+\newcommand{\Neiii}{[Ne~{\sc iii}] $\lambda$3869}
+\newcommand{\neiii}{[Ne~{\sc iii}]}
+\newcommand{\nev}{[Ne~{\sc v}]}
+\newcommand{\Nev}{[Ne~{\sc v}] $\lambda$3426}
+\newcommand{\Sii}{[S~{\sc ii}] $\lambda$6716}
+\newcommand{\sii}{[S~{\sc ii}]}
+\newcommand{\ariii}{[Ar~{\sc iii}]}
+
+\newcommand{\rOii}{[O~{\sc ii}] $\lambda$3726/3729}
+\newcommand{\rOiii}{[O~{\sc iii}] $\lambda$4363/5007}
+\newcommand{\rNii}{[N~{\sc ii}] $\lambda$5755/6584}
+\newcommand{\rSiii}{[S~{\sc iii}] $\lambda$6312/9532}
+\newcommand{\rSii}{[S~{\sc ii}] $\lambda$6731/6717}
+\newcommand{\rAriv}{[Ar~{\sc iv}] $\lambda$4740/4711}
+
+\newcommand{\Ho}{H$^{0}$}
+\newcommand{\Hp}{H$^{+}$}
+\newcommand{\He}{He$^{0}$}
+\newcommand{\Hep}{He$^{+}$}
+\newcommand{\Hepp}{He$^{++}$}
+\newcommand{\No}{N$^{0}$}
+\newcommand{\Np}{N$^{+}$}
+\newcommand{\Npp}{N$^{++}$}
+\newcommand{\Nppp}{N$^{+++}$}
+\newcommand{\Oo}{O$^{0}$}
+\newcommand{\Op}{O$^{+}$}
+\newcommand{\Opp}{O$^{++}$}
+\newcommand{\Oppp}{O$^{+++}$}
+\newcommand{\Nep}{Ne$^{+}$}
+\newcommand{\Nepp}{Ne$^{++}$}
+\newcommand{\Sp}{S$^{+}$}
+\newcommand{\Spp}{S$^{++}$}
+
+
+
+
+
+\title[H~{\sc ii} short title]
+{long title}
+\author[Schoenell et al.] {
+	  W. Schoenell$^{1}$\thanks{E-mail:william@iaa.es}, 
+      N. Ben\'\i tez$^{1}$\thanks{E-mail:benitez@iaa.es}\\
+          $^{1}$Departamento de F\'{\i}sica - CFM - Universidade Federal de Santa Catarina, Florian\'opolis, SC, Brazil\\
+          $^{2}$LUTH, Observatoire de Paris, CNRS, Universit\'e Paris Diderot; Place Jules Janssen 92190 Meudon, France\\
+          $^{3}$Main Astronomical Observatory, Ukrainian National Academy of Sciences, Zabolotnoho 27, Kyiv 03680,  Ukraine\\
+	}
+\begin{document}
+
+\date{Accepted .... Received ; in original form }
+
+\pagerange{\pageref{firstpage}--\pageref{lastpage}} \pubyear{2014}
+
+\maketitle
+
+\label{firstpage}
+
+\begin{abstract} 
+
+blabla
+
+
+
+
+
+
+\end{abstract}
+
+\begin{keywords}
+galaxies:  evolution -- galaxies: statistics -- galaxies: stellar content -- galaxies : active.
+\end{keywords}
+
+
+\section{Introduction}
+
+\section{Problem}
+{\bf \color{red} Outline of this section: We do not have the true redshift for each galaxy! We have to deal with $p(z,T)$ instead of collapsing it on $T$. Why?}
+
+
+
+
+\section{Synthetic library}
+{\bf \color{red} Outline of this section: Tell how we did our synthetic library. MCMC to randomly select ~2000 spectra for each template of BPZ, etc and so on...}
+
+\begin{table*}							
+\begin{centering}							
+\begin{tabular}{lccl}							
+\multicolumn{4}{c}{Parameters list and description}\\ \hline							
+Parameter	&	Units	&	min/max values	&	Meaning	\\ \hline
+$t_0^{Y}$	&	yr	&	$6 \times 10^6$ to $6.3 \times 10^9$	&	Age of the younger burst	\\
+$\theta^{Y}$	&	-	&	$0.001$ to $100$	&	$\theta = \tau \times t_0$. Where $\tau$ is burst e-folding time	\\
+$t_0^{O}$	&	yr	&	$10^9$ to $1.76 \times 10^{10}$	&	Age of the older burst	\\
+$\tau^{O}$	&	-	&	$0.001$ to $100$	&	$\theta = \tau \times t_0$. Where $\tau$ is burst e-folding time	\\
+$Z$	&	$[Fe\/H]$	&	$0.0004$ to $0.05$	&	Stellar metallicity	\\
+$\theta_V$	&	-	&	$0$ to $0.2$	&	Extinction. See \cite{Charlot.Fall.2000a} for details.	\\
+$f^{Y}$	&	\%	&	$0$ to $100$	&	Light fraction on the younger component	\\
+%%							
+\hline							
+\end{tabular}							
+\end{centering}							
+\caption{Synthetic templates library parameters}							
+\label{tab:ListOfParameters}							
+\end{table*}							
+
+\section{Simulations}
+{\bf \color{red} We can generate fake data from i.e. SDSS spectroscopy and try to recover the properties of the galaxies. Another way to do is to compare with a simulated light-cone like the one of Merson et al 2013.}
+
+\section{Comparison with real data}
+{\bf \color{red} Which data will we compare our results to??}
+
+\section*{Acknowledgments}
+W. S. acknowledge support and hospitality of the IAG-USP for short term visits. 
+
+
+\bibliography{references}
+
+\appendix
+
+\section{App 1}
+\label{app:bias}
+
+ 
+\end{document}
+
+% Exemplos de citacoes
+%    \citet{key}              ==>>  Jones et al. (1990)
+%    \citep{key}              ==>>  (Jones et al. 1990)
+%    \citep{key1,key2,...}    ==>>  (Jones et al. 1990; Smith 1989; ...)
+%                                or (Jones et al. 1990, 1991; ...)
+%                                or (Jones et al. 1990a,b; ...)
+%    \citep*{key}             ==>>  (Jones, Baker, & Williams 1990)
+%    \citep[chap. 2]{key}     ==>>  (Jones et al., 1990, chap. 2)
+%    \citep[e.g.][]{key}      ==>>  (e.g. Jones et al., 1990)
+%    \citep[see][p. 34]{key}  ==>>  (see Jones et al., 1990, p. 34)
+%    \citealt{key}            ==>>  Jones et al., 1990
+%    \citealt*{key}           ==>>  Jones, Baker, & Williams, 1990
+%    \citealp{key}            ==>>  Jones et al. 1990
+%    \citealp*{key}           ==>>  Jones, Baker, & Williams 1990
+%    \citeauthor{key}         ==>>  Jones et al.
+%    \citeauthor*{key}        ==>>  Jones, Baker, & Williams
+%    \citeyear{key}           ==>>  1990
+%    \citeyearpar{key}        ==>>  (1990)
+%    \citetext{priv. comm.}   ==>>  (priv. comm.)
+
