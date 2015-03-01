@@ -162,10 +162,6 @@ class Model(object):
     def lnprob(self, x):
         t0_young, tau_young, t0_old, tau_old, frac_young, tau_v = x
         if np.isfinite(self.lnprior(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)):
-            # aux = self.template_magnitudes - self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)
-            # if np.isnan(self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)).sum() > 0:
-            #     print 'nan: ', x, np.isnan(self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v))
-            # return -.5 * np.sum(aux - np.mean(aux))**2
             # Txitxo chi^2:
             aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)
             return -0.5 * (np.sum(aux_s**2) - np.sum(aux_s * self.template_magnitudes)**2 / np.sum(self.template_magnitudes**2))
@@ -213,7 +209,7 @@ print 'starting model...'
 
 i_z = 0
 
-test = False
+test = True
 
 if test:
     ndim, nwalkers = 6, 14
@@ -221,12 +217,14 @@ if test:
     n_steps = 10
     n_burnin = int(n_steps*.3)
     out_fname = 'bpz_fit_full_newmask_kk.hdf5'
+    models_fit = [0]
 else:
     ndim, nwalkers = 6, 100
     n_samples = 200
     n_steps = 1000
     n_burnin = int(n_steps*.3)
-    out_fname = 'bpz_fit_full_newmask_chi2tx.hdf5'
+    out_fname = 'bpz_fit_nointerp_newmask_chi2tx.hdf5'
+    models_fit = range(len(templates_data_interpolated))
 
 f_fit = h5py.File(out_fname, 'w')
 
@@ -234,7 +232,7 @@ model_lnprob = f_fit.create_dataset('/model_lnprob', shape=(z_len, templates_len
 model_parameters = f_fit.create_dataset('/model_parameters', shape=(z_len, templates_len, n_samples, ndim))
 model_magnitudes = f_fit.create_dataset('/model_magnitudes', shape=(z_len, templates_len, n_samples, magnitudes_len))
 
-for i_t in [0]: #range(len(templates_data_interpolated)):  #np.array(range(0, len(templates_data_interpolated), 7))[::-1]:
+for i_t in models_fit:  #np.array(range(0, len(templates_data_interpolated), 7))[::-1]:
     model = Model(templates_magnitudes[i_z, i_t], filters, z[0], config['base_file'], config['base_path'])
     p0 = [model.get_p0() for i in range(nwalkers)]
     sampler = emcee.EnsembleSampler(nwalkers, ndim, model.lnprob)
@@ -254,7 +252,9 @@ for i_t in [0]: #range(len(templates_data_interpolated)):  #np.array(range(0, le
         plt.plot(filter_lambdas, aux_mags + np.mean(model.template_magnitudes - aux_mags), color="k", alpha=0.1)
     plt.plot(filter_lambdas, templates_magnitudes[i_z, i_t], color="r", lw=2, alpha=0.6)
     plt.ylim(21, 25)
-    plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
+    if not test:
+        plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
+    np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob)
     print 'saving template %i' % i_t
     # plt.errorbar(x, y, yerr=yerr, fmt=".k")
 
