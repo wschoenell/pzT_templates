@@ -4,7 +4,7 @@ import emcee
 import h5py
 from magal.util.stellarpop import n_component
 from pystarlight.util.base import StarlightBase
-from pystarlight.util.redenninglaws import Charlot_RedLaw
+from pystarlight.util.redenninglaws import Cardelli_RedLaw
 import time
 
 __author__ = 'william'
@@ -41,6 +41,7 @@ def template_in_z(p):
 config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 0, 'bpz_library_dir': '../no_elines/',
           'z_ini': 0.001, 'z_fin': 0.003, 'z_delta': .001,
           'base_file': '/Users/william/BasesDir/Base.bc03.Padova1994.chab.All.hdf5', 'base_path': 'Base.bc03.Padova1994.chab.All',
+          'AV_min': 0, 'AV_max': 2,
           'filters_dir': '/Users/william/doutorado/photo_filters/Alhambra_Filters',
           'filters': {'F_365': 'F_365_1.res',
                       'F_396': 'F_396_1.res',
@@ -140,9 +141,9 @@ class Model(object):
         self.bt = StarlightBase(base_file, base_path)
 
         # Extinction Law
-        self.tau_l_Y, self.tau_l_O = Charlot_RedLaw(self.bt.l_ssp, mu=0.3)
+        self.q = Cardelli_RedLaw(self.bt.l_ssp)
 
-    def get_spec(self, t0_young, tau_young, t0_old, tau_old, frac_young, tau_v, metallicity=0.02):
+    def get_spec(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity=0.02):
         # 1 - Eval the SFH
         csp_model = n_component(self.bt.ageBase)
         csp_model.add_exp(t0_young, tau_young, frac_young)
@@ -151,25 +152,24 @@ class Model(object):
         # 2 - Eval the correspondent spectrum
         i_met = int(np.argwhere(self.bt.metBase == metallicity))
         spec = self.bt.f_ssp[i_met] * csp_model.get_sfh()[:, np.newaxis] / self.bt.Mstars[i_met][:, np.newaxis]  # Base spectra [??units??]
-        spec[self.bt.ageBase <= 1e7] *= np.exp(tau_v * self.tau_l_Y)
-        spec[self.bt.ageBase > 1e7] *= np.exp(tau_v * self.tau_l_O)
+        spec *= 10 ** (-0.4 * (self.q * a_v))
 
         return spec.sum(axis=0)
 
-    def get_mags(self, t0_young, tau_young, t0_old, tau_old, frac_young, tau_v, metallicity=0.02):
-        return mag_in_z(self.bt.l_ssp, self.get_spec(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v, metallicity), self.z, self.filters)
+    def get_mags(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity=0.02):
+        return mag_in_z(self.bt.l_ssp, self.get_spec(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity), self.z, self.filters)
 
     def lnprob(self, x):
-        t0_young, tau_young, t0_old, tau_old, frac_young, tau_v = x
-        if np.isfinite(self.lnprior(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)):
+        t0_young, tau_young, t0_old, tau_old, frac_young, a_v = x
+        if np.isfinite(self.lnprior(t0_young, tau_young, t0_old, tau_old, frac_young, a_v)):
             # Txitxo chi^2:
-            aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)
+            aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v)
             return -0.5 * (np.sum(aux_s**2) - np.sum(aux_s * self.template_magnitudes)**2 / np.sum(self.template_magnitudes**2))
         else:
             return -np.inf
 
 
-    def lnprior(self, t0_young, tau_young, t0_old, tau_old, frac_young, tau_v):
+    def lnprior(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v):
 
         # old
         if 1e9 > t0_old or t0_old > self.z_age_limit:
@@ -188,7 +188,7 @@ class Model(object):
             return -np.inf
 
         # extinction
-        if 0 > tau_v or tau_v > 2:
+        if config['AV_min'] > a_v or a_v > config['AV_max']:
             return -np.inf
 
         return 1
@@ -199,9 +199,9 @@ class Model(object):
         t0_old = np.log10(1e9) + np.random.rand() * (np.log10(self.z_age_limit) - np.log10(1e9))
         tau_old = np.log10(.001) + np.random.rand() * (np.log10(.001) - np.log10(1000))
         frac_young = np.random.rand()
-        tau_v = 2 * np.random.rand()
+        a_v = 2 * np.random.rand()
 
-        return [10**t0_young, 10**tau_young, 10**t0_old, 10**tau_old, frac_young, tau_v]
+        return [10**t0_young, 10**tau_young, 10**t0_old, 10**tau_old, frac_young, a_v]
 
 
 # Do the modeling
@@ -246,14 +246,14 @@ for i_t in models_fit:  #np.array(range(0, len(templates_data_interpolated), 7))
     random_i = np.random.randint(len(samples), size=n_samples)
     model_lnprob[i_z, i_t] = samples_lnprob[random_i]
     model_parameters[i_z, i_t] = samples[random_i]
-    for i_sample, (t0_young, tau_young, t0_old, tau_old, frac_young, tau_v) in enumerate(model_parameters[i_z, i_t]):
-        aux_mags = model.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, tau_v)
+    for i_sample, (t0_young, tau_young, t0_old, tau_old, frac_young, a_v) in enumerate(model_parameters[i_z, i_t]):
+        aux_mags = model.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v)
         model_magnitudes[i_z, i_t, i_sample] = aux_mags
         plt.plot(filter_lambdas, aux_mags + np.mean(model.template_magnitudes - aux_mags), color="k", alpha=0.1)
     plt.plot(filter_lambdas, templates_magnitudes[i_z, i_t], color="r", lw=2, alpha=0.6)
     plt.ylim(21, 25)
-    if not test:
-        plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
+    # if not test:
+    plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
     np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob)
     print 'saving template %i' % i_t
     # plt.errorbar(x, y, yerr=yerr, fmt=".k")
