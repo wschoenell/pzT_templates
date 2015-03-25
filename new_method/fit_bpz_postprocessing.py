@@ -53,18 +53,20 @@ class PostParameters(object):
         aux_p['age'] = np.sum(self.sfh * self.l2m_norm_ssp * np.log10(self.bt.ageBase)) / np.sum(
             self.sfh * self.l2m_norm_ssp)
 
+        aux_p['m2l'] = np.log10(1/np.average(self.l2m_norm_ssp, weights=self.sfh))
+
         return aux_p
 
 
 
 # file_fit = h5py.File('/Users/william/Downloads/bpz_fit_full_newmask_nointerp.hdf5', 'r')
-file_fit = h5py.File('bpz_fit_full_newmask_kk.hdf5', 'r')
+file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx.hdf5', 'r')
 params = file_fit.get('/model_parameters')
 n_z, n_t, n_models, n_parameters = params.shape
 
 file_fit_processed = h5py.File('test.hdf5', 'w')
 post_parameters_data = np.empty(
-    dtype=np.dtype([('age', np.float), ('metallicity', np.float), ('tau_v', np.float), ('l2m', np.float)]),
+    dtype=np.dtype([('age', np.float), ('metallicity', np.float), ('tau_v', np.float), ('m2l', np.float)]),
     shape=(n_z, n_t, n_models))
 
 
@@ -86,9 +88,10 @@ for i_z in [0]:  # FIXME
                 post_parameters_data[i_z, i_t, i_model][k] = v
 
 file_fit_processed.create_dataset('/parameters', data=post_parameters_data)
-file_fit_processed.create_dataset('/likelihood', data=np.exp(
-    file_fit.get('/model_lnprob') - np.min(file_fit.get('/model_lnprob'), axis=2)[:, :, np.newaxis]))
+l = np.exp(file_fit.get('/model_lnprob') - np.min(file_fit.get('/model_lnprob'), axis=2)[:, :, np.newaxis])
+l /= l.sum(axis=2)[:,:,np.newaxis]
+file_fit_processed.create_dataset('/likelihood', data=l)
 
 #
-# file_fit_processed.close()
-# file_fit.close()
+file_fit_processed.close()
+file_fit.close()
