@@ -17,11 +17,11 @@ from astropy.cosmology import WMAP9 as cosmo
 
 u_Lsun = units.Lsun.to('erg/s')
 
-def taylor_params(bt, n, z, filters):
+def taylor_params(bt, n, z_ini, z, filters):
     for i_z in range(len(z)):
         for i_met in range(bt.nMet):
             for i_age in range(bt.nAges):
-                yield i_z, i_met, i_age, n, z[i_z], bt.l_ssp, bt.f_ssp[i_met, i_age], filters
+                yield i_z+z_ini, i_met, i_age, n, z[i_z], bt.l_ssp, bt.f_ssp[i_met, i_age], filters
 
 def m_factor(p):
     i_z, i_met, i_age, n, z, l_ssp, f_ssp, filters = p
@@ -30,7 +30,7 @@ def m_factor(p):
     q_lambda = Cardelli_RedLaw(l)  # Extinction occurs at z = 0.
     l *= (1 + z)
     f = np.copy(f_ssp)
-    f *= u_Lsun / (4 * np.pi * np.power(d_L, 2) * (1 + z))
+    f *= np.copy(u_Lsun) / (4 * np.pi * np.power(d_L, 2) * (1 + z))
     out_m = []
     out_a = []
     for filter_id in np.sort(filters.keys()):
@@ -56,11 +56,18 @@ def taylor_matrix_ssp(outfile, bt, n, z, filters, multiproc=True):
     out = h5py.File(outfile, 'w')
 
     Nz = len(z)
-    m = out.create_dataset('m', shape=(Nz, bt.nMet, bt.nAges, len(filters), n), dtype=np.float32)
-    a = out.create_dataset('a', shape=(Nz, bt.nMet, bt.nAges, len(filters)), dtype=np.float32)
-    max_nz = 5  # Limit number of redshifts per loop
-    for aux_z in np.array_split(z, max_nz):
-        p = taylor_params(bt, n, aux_z, filters)
+    m = out.create_dataset('m', shape=(Nz, bt.nMet, bt.nAges, len(filters), n), dtype=np.float32)#, compression='gzip', compression_opts=4)
+    a = out.create_dataset('a', shape=(Nz, bt.nMet, bt.nAges, len(filters)), dtype=np.float32)#, compression='gzip', compression_opts=4)
+    out.create_dataset('redshift', data=z)
+    nz_max = 10
+    n_split = Nz/nz_max  # Limit number of redshifts per loop
+    z_ini = 0
+    t0 = time.time()
+    for aux_z in np.array_split(z, n_split):
+        print 't = ', time.time() - t0
+        print 'Working on z_min, z_max = ', np.min(aux_z), np.max(aux_z)
+        p = taylor_params(bt, n, z_ini, aux_z, filters)
+        z_ini += len(aux_z)
         for result in map_function(m_factor, p):
             i_z, i_met, i_age, out_m, out_a = result
             m[i_z, i_met, i_age] = out_m
@@ -388,7 +395,7 @@ def test_magnitudes():
     # Calculate the Taylor Approximation
     for n_taylor in range(1,10):
         t0 = time.time()
-        m, a = taylor_matrix_ssp(bt, n_taylor, z, filters)
+        m, a, f = taylor_matrix_ssp(bt, n_taylor, z, filters)
         mags_taylor = mag_in_z_taylor(csp_model.get_sfh() / bt.Mstars[i_met], a_v, i_z, i_met, m, a)
         print 'n_taylor, t, max |delta_m| = ', n_taylor, time.time() - t0, np.max(np.abs(mags_taylor - mags_analytic))
 
@@ -412,6 +419,7 @@ def eval_matrix(n_taylor=6):
     z = np.arange(config['z_ini'], config['z_fin']+config['z_delta'], config['z_delta'])
     aux_fname = '/Users/william/tmp_out/m_a.hdf5'
     m, a, f = taylor_matrix_ssp(aux_fname, bt, n_taylor, z, filters)
+    f.close()
 
 eval_matrix()
 
