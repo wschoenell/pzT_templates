@@ -1,3 +1,4 @@
+import multiprocessing
 import h5py
 from magal.util.stellarpop import n_component
 from pystarlight.util.base import StarlightBase
@@ -11,13 +12,14 @@ from astropy.cosmology import WMAP9 as cosmo
 import numpy as np
 import matplotlib.pyplot as plt
 
-from common import params, mag_in_z, template_in_z
+from common import params, mag_in_z, template_in_z, mag_in_z_taylor, load_filters, av_taylor_coeff
 
 ## 0 - Configuration
-config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 0, 'bpz_library_dir': '../no_elines/',
+config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 7, 'bpz_library_dir': '../no_elines/',
           'z_ini': 1e-4, 'z_fin': 7.0, 'z_delta': 0.001,
           'base_file': '/Users/william/BasesDir/Base.bc03.Padova1994.chab.All.hdf5', 'base_path': 'Base.bc03.Padova1994.chab.All',
           'AV_min': 0, 'AV_max': 2,
+          'taylor_file': '/Users/william/tmp_out/m_a.hdf5',
           'filters_dir': '/Users/william/doutorado/photo_filters/Alhambra_Filters',
           'filters': {'F_365': 'F_365_1.res',
                       'F_396': 'F_396_1.res',
@@ -43,8 +45,8 @@ config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 0, 'bpz_l
                       # 'F_J': 'F_J_1.res',
                       # 'F_KS': 'F_KS_1.res'}}
 
-# pool = multiprocessing.Pool()
-map_function = map
+pool = multiprocessing.Pool()
+map_function = pool.map
 plot = False
 
 
@@ -54,15 +56,7 @@ z = np.arange(config['z_ini'], config['z_fin'] + config['z_delta'], config['z_de
 #####
 
 ## 1 - Load filter files.
-filters = {}
-for fid in np.sort(config['filters'].keys()):
-    filters[fid] = np.loadtxt('%s/%s' % (config['filters_dir'], config['filters'][fid]), dtype=np.dtype([('lambda', np.float), ('R', np.float)]))
-
-# filter_lambdas = {}
-# for fid in np.sort(config['filters'].keys()):
-#     filter_lambdas[fid] = np.average(filters[fid]['lambda'], weights=filters[fid]['R'])
-#
-filter_lambdas = [np.average(filters[fid]['lambda'], weights=filters[fid]['R']) for fid in np.sort(config['filters'].keys())]
+filters, filter_lambdas = load_filters(config)
 
 
 ## 2 - Calculate bpz magnitudes over different redshifts.
@@ -105,7 +99,7 @@ for result in map_function(template_in_z, p):
     i_z, i_t, mags = result
     templates_magnitudes[i_z, i_t] = mags
 
-# pool.close()
+pool.close()
 
 # f = h5py.File('bpz_templates_mags.hdf5', 'w')
 # f.create_dataset('/filter_lambdas', data=np.array(filter_lambdas))
@@ -117,7 +111,7 @@ for result in map_function(template_in_z, p):
 ## 3 - Model
 class Model(object):
 
-    def __init__(self, template_magnitudes, filters, z, base_file, base_path):
+    def __init__(self, template_magnitudes, filters, z, base_file, base_path, taylor_file=None):
 
         #Template magnitudes
         self.template_magnitudes = template_magnitudes
@@ -132,21 +126,41 @@ class Model(object):
         # Extinction Law
         self.q = Cardelli_RedLaw(self.bt.l_ssp)
 
-    def get_spec(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity=0.02):
+        # If Taylor expansion:
+        if taylor_file:
+            tf = h5py.File(taylor_file)
+            self.m = tf['m']
+            self.a = tf['a']
+            self.tz = tf['redshift']
+            self.int_f = np.array([np.trapz(filters[fid]['R'] * filters[fid]['lambda']**-1) for fid in np.sort(filters.keys())])
+
+    def get_sfh(self, t0_young, tau_young, t0_old, tau_old, frac_young):
         # 1 - Eval the SFH
         csp_model = n_component(self.bt.ageBase)
         csp_model.add_exp(t0_young, tau_young, frac_young)
         csp_model.add_exp(t0_old, tau_old, 1 - frac_young)
+        return csp_model.get_sfh()
+
+    def get_spec(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity=0.02):
+        csp_model = self.get_sfh(frac_young, t0_old, t0_young, tau_old, tau_young)
 
         # 2 - Eval the correspondent spectrum
         i_met = int(np.argwhere(self.bt.metBase == metallicity))
-        spec = self.bt.f_ssp[i_met] * csp_model.get_sfh()[:, np.newaxis] / self.bt.Mstars[i_met][:, np.newaxis]  # Base spectra [??units??]
+        spec = self.bt.f_ssp[i_met] * csp_model[:, np.newaxis] / self.bt.Mstars[i_met][:, np.newaxis]  # Base spectra [??units??]
         spec *= 10 ** (-0.4 * (self.q * a_v))
 
         return spec.sum(axis=0)
 
+    def mag_in_z_taylor(self, sfh, av, i_z, i_met, m, a):
+        n = m.shape[4]
+        return -2.5 * np.log10(np.sum(av_taylor_coeff(n, av, a[i_z, i_met]) * sfh[:, np.newaxis, np.newaxis] * m[i_z, i_met], axis=(0,2)) / self.int_f) - 2.41
+
     def get_mags(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity=0.02):
-        return mag_in_z(self.bt.l_ssp, self.get_spec(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity), self.z, self.filters)
+        #sfh, av, i_z, i_met, m, a, filters)
+        i_z = int(np.argwhere(self.z == self.tz))
+        i_met = int(np.argwhere(self.bt.metBase == metallicity))
+        return self.mag_in_z_taylor(self.get_sfh(t0_young, tau_young, t0_old, tau_old, frac_young), a_v, i_z, i_met, self.m, self.a)
+        #return mag_in_z(self.bt.l_ssp, self.get_spec(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity), self.z, self.filters)
 
     def lnprob(self, x):
         t0_young, tau_young, t0_old, tau_old, frac_young, a_v = x
@@ -198,31 +212,34 @@ print 'starting model...'
 
 i_z = 0
 
-test = True
+test = False
 
 if test:
     ndim, nwalkers = 6, 14
     n_samples = 200
-    n_steps = 10
+    n_steps = 100
     n_burnin = int(n_steps*.3)
-    out_fname = 'bpz_fit_full_newmask_kk.hdf5'
+    out_fname = 'bpz_fit_full_newmask_kk_test.hdf5'
     models_fit = [0]
+    print 'Running for %i templates' % len(templates_data_interpolated)
+    models_fit = range(len(templates_data_interpolated))
 else:
     ndim, nwalkers = 6, 100
     n_samples = 200
     n_steps = 1000
     n_burnin = int(n_steps*.3)
-    out_fname = 'bpz_fit_nointerp_newmask_chi2tx_CCM.hdf5'
+    out_fname = 'bpz_fit_nointerp_newmask_chi2tx_CCM_test.hdf5'
     models_fit = range(len(templates_data_interpolated))
 
 f_fit = h5py.File(out_fname, 'w')
 
-model_lnprob = f_fit.create_dataset('/model_lnprob', shape=(z_len, templates_len, n_samples))
-model_parameters = f_fit.create_dataset('/model_parameters', shape=(z_len, templates_len, n_samples, ndim))
-model_magnitudes = f_fit.create_dataset('/model_magnitudes', shape=(z_len, templates_len, n_samples, magnitudes_len))
+model_lnprob = f_fit.create_dataset('/model_lnprob', shape=(z_len, templates_len, n_samples), compression='gzip')
+model_parameters = f_fit.create_dataset('/model_parameters', shape=(z_len, templates_len, n_samples, ndim), compression='gzip')
+model_magnitudes = f_fit.create_dataset('/model_magnitudes', shape=(z_len, templates_len, n_samples, magnitudes_len), compression='gzip')
+f_fit.create_dataset('/template_magnitudes', data=templates_magnitudes, compression='gzip')
 
 for i_t in models_fit:  #np.array(range(0, len(templates_data_interpolated), 7))[::-1]:
-    model = Model(templates_magnitudes[i_z, i_t], filters, z[0], config['base_file'], config['base_path'])
+    model = Model(templates_magnitudes[i_z, i_t], filters, z[i_z], config['base_file'], config['base_path'], config['taylor_file'])
     p0 = [model.get_p0() for i in range(nwalkers)]
     sampler = emcee.EnsembleSampler(nwalkers, ndim, model.lnprob)
     t0 = time.time()
@@ -240,10 +257,10 @@ for i_t in models_fit:  #np.array(range(0, len(templates_data_interpolated), 7))
         model_magnitudes[i_z, i_t, i_sample] = aux_mags
         plt.plot(filter_lambdas, aux_mags + np.mean(model.template_magnitudes - aux_mags), color="k", alpha=0.1)
     plt.plot(filter_lambdas, templates_magnitudes[i_z, i_t], color="r", lw=2, alpha=0.6)
-    plt.ylim(21, 25)
+    # plt.ylim(21, 25)
     # if not test:
     plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
-    np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob)
+    np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob, templates_magnitudes[i_z, i_t])
     print 'saving template %i' % i_t
     # plt.errorbar(x, y, yerr=yerr, fmt=".k")
 

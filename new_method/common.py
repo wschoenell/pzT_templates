@@ -89,7 +89,7 @@ def av_taylor_coeff(n, av, a):
     return np.rollaxis(np.array([((-0.92103403719761845 * av)**i)/np.math.factorial(i) * 10**(-0.4 * av * a) for i in range(n)]), 0, 3)
 
 
-def mag_in_z_taylor(sfh, av, i_z, i_met, m, a):
+def mag_in_z_taylor(sfh, av, i_z, i_met, m, a, filters):
     n = m.shape[4]
     int_f = np.array([np.trapz(filters[fid]['R'] * filters[fid]['lambda']**-1) for fid in np.sort(filters.keys())])
     return -2.5 * np.log10(np.sum(av_taylor_coeff(n, av, a[i_z, i_met]) * sfh[:, np.newaxis, np.newaxis] * m[i_z, i_met], axis=(0,2)) / int_f) - 2.41
@@ -166,15 +166,28 @@ def test_matrix_time():
 
 # test_matrix_time()
 
-def eval_matrix(n_taylor=6):
-    print 'Calculating Taylor coefficients matrix for n_taylor = 5.'
-    bt = StarlightBase('/Users/william/BasesDir/Base.bc03.Padova1994.chab.All.hdf5', 'Base.bc03.Padova1994.chab.All')
-    z = np.arange(config['z_ini'], config['z_fin']+config['z_delta'], config['z_delta'])
-    aux_fname = '/Users/william/tmp_out/m_a.hdf5'
-    m, a, f = taylor_matrix_ssp(aux_fname, bt, n_taylor, z, filters)
-    f.close()
+def load_filters(config):
+    filters = {}
+    for fid in np.sort(config['filters'].keys()):
+        filters[fid] = np.loadtxt('%s/%s' % (config['filters_dir'], config['filters'][fid]),
+                                  dtype=np.dtype([('lambda', np.float), ('R', np.float)]))
 
-# eval_matrix()
+    # filter_lambdas = {}
+    # for fid in np.sort(config['filters'].keys()):
+    # filter_lambdas[fid] = np.average(filters[fid]['lambda'], weights=filters[fid]['R'])
+    #
+    filter_lambdas = [np.average(filters[fid]['lambda'], weights=filters[fid]['R']) for fid in
+                      np.sort(config['filters'].keys())]
+
+    return filters, filter_lambdas
+
+def eval_matrix(config, n_taylor=6):
+    filters, filter_lambdas = load_filters(config)
+    print 'Calculating Taylor coefficients matrix for n_taylor = %i.' % n_taylor
+    bt = StarlightBase(config['base_file'], config['base_path'])
+    z = np.arange(config['z_ini'], config['z_fin']+config['z_delta'], config['z_delta'])
+    m, a, f = taylor_matrix_ssp(config['taylor_file'], bt, n_taylor, z, filters)
+    f.close()
 
 
 # # Indefinite integral:

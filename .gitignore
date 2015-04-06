@@ -56,3 +56,11 @@ templates_interp/
 *hdf5
 no_elines/
 *.log
+
+
+# Plots
+*.png
+
+# Numpy temp files
+*.npz
+*.npy
