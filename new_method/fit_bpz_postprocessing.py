@@ -7,9 +7,12 @@ import h5py
 import numpy as np
 
 # TODO: Import config from hdf5 output.
-config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 7, 'bpz_library_dir': '../no_elines/',
-          'z_ini': 0.001, 'z_fin': 0.003, 'z_delta': .001,
+## 0 - Configuration
+config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 0, 'bpz_library_dir': '../no_elines/',
+          'z_ini': 1e-4, 'z_fin': 7.0, 'z_delta': 0.001,
           'base_file': '/Users/william/BasesDir/Base.bc03.Padova1994.chab.All.hdf5', 'base_path': 'Base.bc03.Padova1994.chab.All',
+          'AV_min': 0, 'AV_max': 2,
+          'taylor_file': '/Users/william/tmp_out/m_a.hdf5',
           'filters_dir': '/Users/william/doutorado/photo_filters/Alhambra_Filters',
           'filters': {'F_365': 'F_365_1.res',
                       'F_396': 'F_396_1.res',
@@ -43,8 +46,8 @@ class PostParameters(object):
         self.bt = bt
         self.l2m_norm_ssp = l2m_norm_ssp
 
-    def get_parameters(self, t0_young, tau_young, t0_old, tau_old, frac_young, tau_v):
-        aux_p = {'tau_v': tau_v}
+    def get_parameters(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v):
+        aux_p = {'a_v': a_v}
         csp_model = n_component(self.bt.ageBase)
         csp_model.add_exp(t0_young, tau_young, frac_young)
         csp_model.add_exp(t0_old, tau_old, 1 - frac_young)
@@ -60,13 +63,14 @@ class PostParameters(object):
 
 
 # file_fit = h5py.File('/Users/william/Downloads/bpz_fit_full_newmask_nointerp.hdf5', 'r')
-file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx.hdf5', 'r')
+# file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx.hdf5', 'r')
+file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx_CCM_test.hdf5', 'r')
 params = file_fit.get('/model_parameters')
 n_z, n_t, n_models, n_parameters = params.shape
 
 file_fit_processed = h5py.File('test.hdf5', 'w')
 post_parameters_data = np.empty(
-    dtype=np.dtype([('age', np.float), ('metallicity', np.float), ('tau_v', np.float), ('m2l', np.float)]),
+    dtype=np.dtype([('age', np.float), ('metallicity', np.float), ('a_v', np.float), ('m2l', np.float)]),
     shape=(n_z, n_t, n_models))
 
 
@@ -87,7 +91,7 @@ for i_z in [0]:  # FIXME
             for k, v in post_parameters.get_parameters(*params[i_z, i_t, i_model]).iteritems():
                 post_parameters_data[i_z, i_t, i_model][k] = v
 
-file_fit_processed.create_dataset('/parameters', data=post_parameters_data)
+file_fit_processed.create_dataset('/parameters', data=post_parameters_data, compression='gzip')
 l = np.exp(file_fit.get('/model_lnprob') - np.min(file_fit.get('/model_lnprob'), axis=2)[:, :, np.newaxis])
 l /= l.sum(axis=2)[:,:,np.newaxis]
 file_fit_processed.create_dataset('/likelihood', data=l)

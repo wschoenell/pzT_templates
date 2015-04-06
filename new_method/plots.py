@@ -39,7 +39,8 @@ file_bpzmags = h5py.File('bpz_templates_mags.hdf5', 'r')
 bpz_template_magnitudes = file_bpzmags.get('/bpz_template_magnitudes')
 filter_lambdas = file_bpzmags.get('/filter_lambdas')
 
-file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx.hdf5', 'r')
+# file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx.hdf5', 'r')
+file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx_CCM_test.hdf5', 'r')
 f_processed = h5py.File('test.hdf5', 'r')
 likelihood = f_processed.get('/likelihood')
 parameters = f_processed.get('/parameters')
@@ -63,17 +64,15 @@ for i_template in range(n_templates):
     # axes[0].xaxis.get_ticklabels()[-1].set_visible(False)
     axes[0].set_xlim(8, 10.1)
 
-    # tau_v histogram
-    tau_min = 0
-    tau_max = 2
-    make_hist(0, 2, 0.2, parameters['tau_v'][i_z, i_template], likelihood[i_z, i_template], axes[1])
-    axes[1].set_title('$\\tau_V$')
+    # a_v histogram
+    av_min = 0
+    av_max = 2
+    make_hist(0, 2, 0.2, parameters['a_v'][i_z, i_template], likelihood[i_z, i_template], axes[1])
+    axes[1].set_title('$A_V$')
     axes[1].xaxis.get_ticklabels()[0].set_visible(False)
     axes[1].xaxis.get_ticklabels()[-1].set_visible(False)
 
     # M/L ratio histogram
-    tau_min = 0
-    tau_max = 2
     make_hist(2, 5, 0.2, parameters['m2l'][i_z, i_template], likelihood[i_z, i_template], axes[2])
     axes[2].set_title('$\log M / L (\lambda = 4020 \\AA)$')
     axes[2].xaxis.get_ticklabels()[-1].set_visible(False)
@@ -91,4 +90,4 @@ for i_template in range(n_templates):
 
     plt.savefig('template_%i.png' % i_template)
 
-    # raw_input('Next...')
+    raw_input('Next...')
