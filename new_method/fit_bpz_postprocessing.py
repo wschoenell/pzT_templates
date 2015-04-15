@@ -46,8 +46,8 @@ class PostParameters(object):
         self.bt = bt
         self.l2m_norm_ssp = l2m_norm_ssp
 
-    def get_parameters(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v):
-        aux_p = {'a_v': a_v}
+    def get_parameters(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity):
+        aux_p = {'a_v': a_v, 'metallicity': metallicity}
         csp_model = n_component(self.bt.ageBase)
         csp_model.add_exp(t0_young, tau_young, frac_young)
         csp_model.add_exp(t0_old, tau_old, 1 - frac_young)

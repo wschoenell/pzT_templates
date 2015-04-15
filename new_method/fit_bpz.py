@@ -16,7 +16,7 @@ from common import params, mag_in_z, template_in_z, mag_in_z_taylor, load_filter
 
 ## 0 - Configuration
 config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 7, 'bpz_library_dir': '../no_elines/',
-          'z_ini': 1e-4, 'z_fin': 7.0, 'z_delta': 0.001,
+          'z_ini': 1e-4, 'z_fin': 1.0, 'z_delta': 0.001,
           'base_file': '/Users/william/BasesDir/Base.bc03.Padova1994.chab.All.hdf5', 'base_path': 'Base.bc03.Padova1994.chab.All',
           'AV_min': 0, 'AV_max': 2,
           'taylor_file': '/Users/william/tmp_out/m_a.hdf5',
@@ -122,6 +122,13 @@ class Model(object):
 
         # Base
         self.bt = StarlightBase(base_file, base_path)
+        ## Metallicity
+        aux = np.log10(self.bt.metBase)
+        aux2 = (aux[1:] - aux[0:-1])/2
+        self.met_min = aux - np.append(aux2[0], aux2)
+        self.met_max = aux + np.append(aux2, aux2[-1])
+        self.met_low = min(self.met_min)
+        self.met_upp = max(self.met_max)
 
         # Extinction Law
         self.q = Cardelli_RedLaw(self.bt.l_ssp)
@@ -155,24 +162,28 @@ class Model(object):
         n = m.shape[4]
         return -2.5 * np.log10(np.sum(av_taylor_coeff(n, av, a[i_z, i_met]) * sfh[:, np.newaxis, np.newaxis] * m[i_z, i_met], axis=(0,2)) / self.int_f) - 2.41
 
-    def get_mags(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity=0.02):
+    def get_mags(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity):
         #sfh, av, i_z, i_met, m, a, filters)
         i_z = int(np.argwhere(self.z == self.tz))
-        i_met = int(np.argwhere(self.bt.metBase == metallicity))
+        i_met = int(np.argwhere(np.bitwise_and(metallicity >= self.met_min, metallicity < self.met_max)))
         return self.mag_in_z_taylor(self.get_sfh(t0_young, tau_young, t0_old, tau_old, frac_young), a_v, i_z, i_met, self.m, self.a)
         #return mag_in_z(self.bt.l_ssp, self.get_spec(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity), self.z, self.filters)
 
     def lnprob(self, x):
-        t0_young, tau_young, t0_old, tau_old, frac_young, a_v = x
-        if np.isfinite(self.lnprior(t0_young, tau_young, t0_old, tau_old, frac_young, a_v)):
+        t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity = x
+        if np.isfinite(self.lnprior(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)):
             # Txitxo chi^2:
-            aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v)
+            aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
             return -0.5 * (np.sum(aux_s**2) - np.sum(aux_s * self.template_magnitudes)**2 / np.sum(self.template_magnitudes**2))
         else:
             return -np.inf
 
 
-    def lnprior(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v):
+    def lnprior(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity):
+
+        # metallicity
+        if np.float64(metallicity) < self.met_low or np.float64(metallicity) >= self.met_upp:
+            return -np.inf
 
         # old
         if 1e9 > t0_old or t0_old > self.z_age_limit:
@@ -203,33 +214,34 @@ class Model(object):
         tau_old = np.log10(.001) + np.random.rand() * (np.log10(.001) - np.log10(1000))
         frac_young = np.random.rand()
         a_v = 2 * np.random.rand()
+        metallicity = self.met_low + np.random.random() * (self.met_upp - self.met_low)
 
-        return [10**t0_young, 10**tau_young, 10**t0_old, 10**tau_old, frac_young, a_v]
+        return [10**t0_young, 10**tau_young, 10**t0_old, 10**tau_old, frac_young, a_v, metallicity]
 
 
 # Do the modeling
 print 'starting model...'
 
-i_z = 0
-
 test = False
 
 if test:
-    ndim, nwalkers = 6, 14
+    ndim, nwalkers = 7, 14
     n_samples = 200
     n_steps = 100
     n_burnin = int(n_steps*.3)
     out_fname = 'bpz_fit_full_newmask_kk_test.hdf5'
     models_fit = [0]
+    z_fit = [0]
     print 'Running for %i templates' % len(templates_data_interpolated)
     models_fit = range(len(templates_data_interpolated))
 else:
-    ndim, nwalkers = 6, 100
+    ndim, nwalkers = 7, 100
     n_samples = 200
     n_steps = 1000
     n_burnin = int(n_steps*.3)
     out_fname = 'bpz_fit_nointerp_newmask_chi2tx_CCM_test.hdf5'
     models_fit = range(len(templates_data_interpolated))
+    z_fit = range(z_len)
 
 f_fit = h5py.File(out_fname, 'w')
 
@@ -238,32 +250,50 @@ model_parameters = f_fit.create_dataset('/model_parameters', shape=(z_len, templ
 model_magnitudes = f_fit.create_dataset('/model_magnitudes', shape=(z_len, templates_len, n_samples, magnitudes_len), compression='gzip')
 f_fit.create_dataset('/template_magnitudes', data=templates_magnitudes, compression='gzip')
 
-for i_t in models_fit:  #np.array(range(0, len(templates_data_interpolated), 7))[::-1]:
+def params_fit(models_fit, z_fit):
+    for i_t in models_fit:
+        for i_z in z_fit:
+            yield i_t, i_z
+
+
+def run_fit(p):
+    i_t, i_z = p
     model = Model(templates_magnitudes[i_z, i_t], filters, z[i_z], config['base_file'], config['base_path'], config['taylor_file'])
     p0 = [model.get_p0() for i in range(nwalkers)]
     sampler = emcee.EnsembleSampler(nwalkers, ndim, model.lnprob)
     t0 = time.time()
     sampler.run_mcmc(p0, n_steps)
-    print 'Total time: %3.2f secs' % (time.time() - t0)
+    print 'i_t, i_z, time: %i, %i, %3.2f secs' % (i_t, i_z, time.time() - t0)
     samples = sampler.chain[:, n_burnin:, :].reshape((-1, ndim))
     samples_lnprob = sampler.lnprobability[:, n_burnin:].reshape((-1))
 
-    plt.clf()
+    # plt.clf()
     random_i = np.random.randint(len(samples), size=n_samples)
-    model_lnprob[i_z, i_t] = samples_lnprob[random_i]
-    model_parameters[i_z, i_t] = samples[random_i]
-    for i_sample, (t0_young, tau_young, t0_old, tau_old, frac_young, a_v) in enumerate(model_parameters[i_z, i_t]):
-        aux_mags = model.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v)
-        model_magnitudes[i_z, i_t, i_sample] = aux_mags
-        plt.plot(filter_lambdas, aux_mags + np.mean(model.template_magnitudes - aux_mags), color="k", alpha=0.1)
-    plt.plot(filter_lambdas, templates_magnitudes[i_z, i_t], color="r", lw=2, alpha=0.6)
+
+    return i_t, i_z, samples_lnprob[random_i], samples[random_i]
+    # for i_sample, (t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity) in enumerate(model_parameters[i_z, i_t]):
+    #     aux_mags = model.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
+    #     model_magnitudes[i_z, i_t, i_sample] = aux_mags
+        # plt.plot(filter_lambdas, aux_mags + np.mean(model.template_magnitudes - aux_mags), color="k", alpha=0.1)
+    # plt.plot(filter_lambdas, templates_magnitudes[i_z, i_t], color="r", lw=2, alpha=0.6)
     # plt.ylim(21, 25)
     # if not test:
-    plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
-    np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob, templates_magnitudes[i_z, i_t])
-    print 'saving template %i' % i_t
+    # plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
+    # np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob, templates_magnitudes[i_z, i_t])
+    # print 'saving template %i' % i_t
     # plt.errorbar(x, y, yerr=yerr, fmt=".k")
 
+
+pool = multiprocessing.Pool()
+plot = False
+
+fit_pars = params_fit(models_fit, z_fit)
+for i_t, i_z, lnprob, parameters in pool.map(run_fit, fit_pars):
+    model_lnprob[i_z, i_t] = lnprob
+    model_parameters[i_z, i_t] = parameters
+
 f_fit.close()
+
+pool.close()
 
 ## 99 - End

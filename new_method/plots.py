@@ -5,10 +5,12 @@ import matplotlib.pyplot as plt
 
 def get_axes(figure):
     axes = []
-    axes.append(figure.add_axes([0.1, 0.5, 0.266666666667, .4]))
-    axes.append(figure.add_axes([0.366666666667, 0.5, 0.266666666667, .4], sharey=axes[-1]))
+    axes.append(figure.add_axes([0.1, 0.5, 0.2, .4]))
+    axes.append(figure.add_axes([0.3, 0.5, 0.2, .4], sharey=axes[-1]))
     axes[-1].yaxis.set_ticklabels([])
-    axes.append(figure.add_axes([0.633333333333, 0.5, 0.266666666667, .4], sharey=axes[-1]))
+    axes.append(figure.add_axes([0.5, 0.5, 0.2, .4], sharey=axes[-1]))
+    axes[-1].yaxis.set_ticklabels([])
+    axes.append(figure.add_axes([0.7, 0.5, 0.2, .4], sharey=axes[-1]))
     axes[-1].yaxis.set_ticklabels([])
     axes.append(figure.add_axes([0.1, 0.1, 0.8, .35]))
     # axes[-1].yaxis.set_ticklabels([])
@@ -40,7 +42,7 @@ bpz_template_magnitudes = file_bpzmags.get('/bpz_template_magnitudes')
 filter_lambdas = file_bpzmags.get('/filter_lambdas')
 
 # file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx.hdf5', 'r')
-file_fit = h5py.File('/Users/william/Downloads/bpz_fit_nointerp_newmask_chi2tx_CCM_test.hdf5', 'r')
+file_fit = h5py.File('/Users/william/Downloads/bpz_fit_full_newmask_kk_test.hdf5', 'r')
 f_processed = h5py.File('test.hdf5', 'r')
 likelihood = f_processed.get('/likelihood')
 parameters = f_processed.get('/parameters')
@@ -77,6 +79,11 @@ for i_template in range(n_templates):
     axes[2].set_title('$\log M / L (\lambda = 4020 \\AA)$')
     axes[2].xaxis.get_ticklabels()[-1].set_visible(False)
 
+    # Metallicity ratio histogram
+    make_hist(-4, -1.31, .2, parameters['metallicity'][i_z, i_template], likelihood[i_z, i_template], axes[3])
+    axes[3].set_title('$\log Z_\star$')
+    axes[3].xaxis.get_ticklabels()[-1].set_visible(False)
+
     alpha = likelihood[i_z, i_template] / likelihood[i_z, i_template].max()
     for i_model in range(len(model_magnitudes[i_z, i_template])):
         axes[-1].plot(filter_lambdas, model_magnitudes[i_z, i_template, i_model] + np.mean(
@@ -90,4 +97,4 @@ for i_template in range(n_templates):
 
     plt.savefig('template_%i.png' % i_template)
 
-    raw_input('Next...')
+    # raw_input('Next...')
