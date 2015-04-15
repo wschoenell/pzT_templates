@@ -146,7 +146,7 @@ class Model(object):
 
         # 2 - Eval the correspondent spectrum
         i_met = int(np.argwhere(self.bt.metBase == metallicity))
-        spec = self.bt.f_ssp[i_met] * csp_model[:, np.newaxis] / self.bt.Mstars[i_met][:, np.newaxis]  # Base spectra [??units??]
+        spec = self.bt.f_ssp[i_met] * csp_model[:, np.newaxis]  # Base spectra [??units??]
         spec *= 10 ** (-0.4 * (self.q * a_v))
 
         return spec.sum(axis=0)

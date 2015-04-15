@@ -141,7 +141,7 @@ def test_magnitudes():
     csp_model.add_exp(t0_old, tau_old, 1 - frac_young)
 
     # Calculate the analytic integral
-    spec = np.sum(bt.f_ssp[i_met] * csp_model.get_sfh()[:, np.newaxis] / bt.Mstars[i_met][:, np.newaxis], axis=0)  # Base spectra [??units??]
+    spec = np.sum(bt.f_ssp[i_met] * csp_model.get_sfh()[:, np.newaxis], axis=0)  # Base spectra [??units??]
     spec *= 10 ** (-0.4 * (Cardelli_RedLaw(bt.l_ssp) * a_v))
     mags_analytic = mag_in_z(bt.l_ssp, spec, z[i_z], filters)
 
@@ -149,7 +149,7 @@ def test_magnitudes():
     for n_taylor in range(1,10):
         t0 = time.time()
         m, a, f = taylor_matrix_ssp(bt, n_taylor, z, filters)
-        mags_taylor = mag_in_z_taylor(csp_model.get_sfh() / bt.Mstars[i_met], a_v, i_z, i_met, m, a)
+        mags_taylor = mag_in_z_taylor(csp_model.get_sfh(), a_v, i_z, i_met, m, a)
         print 'n_taylor, t, max |delta_m| = ', n_taylor, time.time() - t0, np.max(np.abs(mags_taylor - mags_analytic))
 
 def test_matrix_time():
