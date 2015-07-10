@@ -4,6 +4,7 @@ from magal.util.stellarpop import n_component
 from pystarlight.util.base import StarlightBase
 from pystarlight.util.redenninglaws import Cardelli_RedLaw
 import time
+import sys
 
 __author__ = 'william'
 
@@ -12,7 +13,7 @@ from astropy.cosmology import WMAP9 as cosmo
 import numpy as np
 import matplotlib.pyplot as plt
 
-from common import params, mag_in_z, template_in_z, mag_in_z_taylor, load_filters, av_taylor_coeff
+from common import params, template_in_z, load_filters, av_taylor_coeff
 
 ## 0 - Configuration
 config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 7, 'bpz_library_dir': '../no_elines/',
@@ -21,6 +22,7 @@ config = {'bpz_library': '../templates/eB11.list', 'n_interpolations': 7, 'bpz_l
           'AV_min': 0, 'AV_max': 2,
           'taylor_file': '/Users/william/tmp_out/m_a.hdf5',
           'filters_dir': '/Users/william/doutorado/photo_filters/Alhambra_Filters',
+          'magerr': 0.1,
           'filters': {'F_365': 'F_365_1.res',
                       'F_396': 'F_396_1.res',
                       'F_427': 'F_427_1.res',
@@ -84,11 +86,16 @@ for interpolation in interpolations:
         mask_lambda = np.bitwise_and(xlim[0] < templates_data_interpolated[-1]['lambda'], templates_data_interpolated[-1]['lambda'] < xlim[1])
         ymin = np.min(np.concatenate(([ymin], templates_data_interpolated[-1]['flux'][mask_lambda])))
         ymax = np.max(np.concatenate(([ymax], templates_data_interpolated[-1]['flux'][mask_lambda])))
-        plt.plot(templates_data_interpolated[-1]['lambda'], templates_data_interpolated[-1]['flux'])
+        if interpolation == round(interpolation):
+            plt.plot(templates_data_interpolated[-1]['lambda'], templates_data_interpolated[-1]['flux'], lw=2)
+        else:
+            plt.plot(templates_data_interpolated[-1]['lambda'], templates_data_interpolated[-1]['flux'])
 
 if plot:
     plt.xlim(xlim)
     plt.ylim(ymin, ymax)
+    plt.savefig('spec.png' % interpolation)
+    sys.exit()
 
 #### 2.2 - Calculate magnitudes
 z = np.arange(config['z_ini'], config['z_fin'] + config['z_delta'], config['z_delta'])
@@ -101,17 +108,19 @@ for result in map_function(template_in_z, p):
 
 pool.close()
 
-# f = h5py.File('bpz_templates_mags.hdf5', 'w')
-# f.create_dataset('/filter_lambdas', data=np.array(filter_lambdas))
-# f.create_dataset('/bpz_template_magnitudes', data=templates_magnitudes)
-# f.close()
-# #
-# sys.exit()
+save_mags = True
+if save_mags:
+    f = h5py.File('bpz_templates_mags.hdf5', 'w')
+    f.create_dataset('/filter_lambdas', data=np.array(filter_lambdas))
+    f.create_dataset('/bpz_template_magnitudes', data=templates_magnitudes)
+    f.close()
+    #
+    # sys.exit()
 
 ## 3 - Model
 class Model(object):
 
-    def __init__(self, template_magnitudes, filters, z, base_file, base_path, taylor_file=None):
+    def __init__(self, template_magnitudes, filters, z, base_file, base_path, taylor_file=None, magerr=1e-14):
 
         #Template magnitudes
         self.template_magnitudes = template_magnitudes
@@ -135,11 +144,14 @@ class Model(object):
 
         # If Taylor expansion:
         if taylor_file:
-            tf = h5py.File(taylor_file)
+            tf = h5py.File(taylor_file, 'r')
             self.m = tf['m']
             self.a = tf['a']
             self.tz = tf['redshift']
             self.int_f = np.array([np.trapz(filters[fid]['R'] * filters[fid]['lambda']**-1) for fid in np.sort(filters.keys())])
+
+        # Magnitude error
+        self.magerr = magerr
 
     def get_sfh(self, t0_young, tau_young, t0_old, tau_old, frac_young):
         # 1 - Eval the SFH
@@ -172,12 +184,15 @@ class Model(object):
     def lnprob(self, x):
         t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity = x
         if np.isfinite(self.lnprior(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)):
-            # Txitxo chi^2:
-            aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
-            return -0.5 * (np.sum(aux_s**2) - np.sum(aux_s * self.template_magnitudes)**2 / np.sum(self.template_magnitudes**2))
+            # # Txitxo chi^2:
+            # aux_s = self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
+            # return -0.5 * (np.sum(aux_s**2) - np.sum(aux_s * self.template_magnitudes)**2 / np.sum(self.template_magnitudes**2)) * (1/self.magerr)**2
+            # William's magnitude chi^2:
+            # \chi^2 = \sum O - M + a  ## a is the scaling factor.
+            aux_s = self.template_magnitudes - self.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
+            return -0.5 * np.sum((aux_s - np.mean(aux_s))**2) * self.magerr**-2
         else:
             return -np.inf
-
 
     def lnprior(self, t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity):
 
@@ -213,7 +228,7 @@ class Model(object):
         t0_old = np.log10(1e9) + np.random.rand() * (np.log10(self.z_age_limit) - np.log10(1e9))
         tau_old = np.log10(.001) + np.random.rand() * (np.log10(.001) - np.log10(1000))
         frac_young = np.random.rand()
-        a_v = 2 * np.random.rand()
+        a_v = config['AV_min'] + np.random.random() * (config['AV_max'] - config['AV_min'])  #2 * np.random.rand()
         metallicity = self.met_low + np.random.random() * (self.met_upp - self.met_low)
 
         return [10**t0_young, 10**tau_young, 10**t0_old, 10**tau_old, frac_young, a_v, metallicity]
@@ -239,7 +254,7 @@ else:
     n_samples = 200
     n_steps = 1000
     n_burnin = int(n_steps*.3)
-    out_fname = 'bpz_fit_nointerp_newmask_chi2tx_CCM_test.hdf5'
+    out_fname = 'oo_bpz_fit_magerr_%3.2f.hdf5' % config['magerr']
     models_fit = range(len(templates_data_interpolated))
     z_fit = range(z_len)
 
@@ -258,7 +273,7 @@ def params_fit(models_fit, z_fit):
 
 def run_fit(p):
     i_t, i_z = p
-    model = Model(templates_magnitudes[i_z, i_t], filters, z[i_z], config['base_file'], config['base_path'], config['taylor_file'])
+    model = Model(templates_magnitudes[i_z, i_t], filters, z[i_z], config['base_file'], config['base_path'], config['taylor_file'], config['magerr'])
     p0 = [model.get_p0() for i in range(nwalkers)]
     sampler = emcee.EnsembleSampler(nwalkers, ndim, model.lnprob)
     t0 = time.time()
@@ -271,18 +286,6 @@ def run_fit(p):
     random_i = np.random.randint(len(samples), size=n_samples)
 
     return i_t, i_z, samples_lnprob[random_i], samples[random_i]
-    # for i_sample, (t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity) in enumerate(model_parameters[i_z, i_t]):
-    #     aux_mags = model.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
-    #     model_magnitudes[i_z, i_t, i_sample] = aux_mags
-        # plt.plot(filter_lambdas, aux_mags + np.mean(model.template_magnitudes - aux_mags), color="k", alpha=0.1)
-    # plt.plot(filter_lambdas, templates_magnitudes[i_z, i_t], color="r", lw=2, alpha=0.6)
-    # plt.ylim(21, 25)
-    # if not test:
-    # plt.savefig('fit_template_%i_noIR_chi2tx.png' % i_t)
-    # np.savez('fit_template_%i_noIR_chi2tx.npz' % i_t, samples, samples_lnprob, templates_magnitudes[i_z, i_t])
-    # print 'saving template %i' % i_t
-    # plt.errorbar(x, y, yerr=yerr, fmt=".k")
-
 
 pool = multiprocessing.Pool()
 plot = False
@@ -291,6 +294,14 @@ fit_pars = params_fit(models_fit, z_fit)
 for i_t, i_z, lnprob, parameters in pool.map(run_fit, fit_pars):
     model_lnprob[i_z, i_t] = lnprob
     model_parameters[i_z, i_t] = parameters
+# Save the magnitudes.
+# for i_z in range(z_len):
+#     for i_t in range(len(interpolations)):
+#         model = Model(templates_magnitudes[i_z, i_t], filters, z[i_z], config['base_file'], config['base_path'], config['taylor_file'], config['magerr'])
+#         for i_sample, (t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity) in enumerate(model_parameters[i_z, i_t]):
+#             aux_mags = model.get_mags(t0_young, tau_young, t0_old, tau_old, frac_young, a_v, metallicity)
+#             model_magnitudes[i_z, i_t, i_sample] = aux_mags
+# End of saving magnitudes #
 
 f_fit.close()
 
