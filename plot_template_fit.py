@@ -12,7 +12,7 @@ age_min = 8
 age_max = 10.1
 bins = np.arange(age_min, age_max, 0.05)
 
-for i_t in range(0, 81, 8):
+for i_t in range(0, zT_weights.shape[2]): #, 8):
     plt.clf()
     aux_hst, aux_bins = np.histogram(tpl_params['mean_age'], bins=bins, normed=True)
     aux_hst /= np.max(aux_hst)

@@ -49,7 +49,6 @@ for i_model in range(n_model):
     mod.add_exp(guess['t0_young'], guess['tau_young'], guess['frac_young'])
     sfh = mod.get_sfh()
 
-
     _ages = mod.ages_end - (mod.ages_end - mod.ages_start) / 2
     l2m_norm_ssp = [bt[flag_Z][i]['f_ssp'][_i_norm] for i in range(len(_ages))]
     csp_at_flux = np.sum(sfh * l2m_norm_ssp * np.log10(_ages)) / np.sum(sfh * l2m_norm_ssp)

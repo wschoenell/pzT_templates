@@ -2,10 +2,11 @@ import multiprocessing
 import os
 from astropy import units
 import h5py
+import time
+
 from magal.util.stellarpop import n_component
 from pystarlight.util.base import StarlightBase
 from pystarlight.util.redenninglaws import Cardelli_RedLaw
-import time
 
 
 __author__ = 'william'
