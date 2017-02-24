@@ -6,6 +6,9 @@
 % Journal abreviations
 \usepackage{aas_macros}
 
+% Appendix
+\usepackage{appendix}
+
 % References
 %\bibliographystyle{mn2e}
 \bibliographystyle{mn2efx}
@@ -17,10 +20,13 @@
 \usepackage{xspace}
 
 % For the final version
-\DeclareGraphicsExtensions{.ps, .eps}
+\DeclareGraphicsExtensions{.ps, .eps, .pdf}
 
 % For the draft - do not uncomment
 %\DeclareGraphicsExtensions{.png}
+
+% math align
+\usepackage{amsmath}
 
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -126,13 +132,13 @@
 
 
 
+\def\ojo{\fbox{\bf !$\odot$j$\odot$!}} % Ojo! Needs Correction%
 
 
-\title[H~{\sc ii} short title]
-{long title}
+\title[The ALHAMBRA Survey: Stellar masses]
+{The ALHAMBRA Survey: Stellar masses and mass function}
 \author[Schoenell et al.] {
-	  W. Schoenell$^{1}$\thanks{E-mail:william@iaa.es}, 
-      N. Ben\'\i tez$^{1}$\thanks{E-mail:benitez@iaa.es}\\
+	  W. Schoenell$^{1}$\thanks{E-mail:william@iaa.es}, \\
           $^{1}$Departamento de F\'{\i}sica - CFM - Universidade Federal de Santa Catarina, Florian\'opolis, SC, Brazil\\
           $^{2}$LUTH, Observatoire de Paris, CNRS, Universit\'e Paris Diderot; Place Jules Janssen 92190 Meudon, France\\
           $^{3}$Main Astronomical Observatory, Ukrainian National Academy of Sciences, Zabolotnoho 27, Kyiv 03680,  Ukraine\\
@@ -148,14 +154,8 @@
 \label{firstpage}
 
 \begin{abstract} 
-
-blabla
-
-
-
-
-
-
+This paper describes a method to estimate stellar masses out of the combined redshift-Template $P(z,T)$ probability distribution function provided by the Bayesian photometric redshift (BPT) code. The method is tested with simulations and applied to data for ?123456? galaxies from the ALHAMBRA survey, a 23-bands photometric survey covering 3 square degrees and complete down to $\sim 24.5$ AB mag in $I$. The resulting stellar mass function is also presented, and found to be in accordance with that obtained from other surveys. Breaking the mass function by spectral types we find ..... \ojo .
+Finally, the same methodology is employed to estimate more elaborate stellar population properties, such as mean ages and metallicity...\ojo
 \end{abstract}
 
 \begin{keywords}
@@ -164,27 +164,152 @@ galaxies:  evolution -- galaxies: statistics -- galaxies: stellar content -- gal
 
 
 \section{Introduction}
-
-\section{Problem}
+\label{sec:intro}
 {\bf \color{red} Outline of this section: We do not have the true redshift for each galaxy! We have to deal with $p(z,T)$ instead of collapsing it on $T$. Why?}
 
+Photometric redshifts are the cheapest and fastest way for the determination of the distance of galaxies. The precision of these distances is undeniably smaller that the spectroscopic ones but the number of galaxies that can be covered with the same amount of telescope time and the use of the redshift probability distribution functions (PDFs) are shown to be very powerful when the goal is to have a statistical sample.
+
+{{\bf Excerpt from Sheldon et al 2012:} \it As several recent works have shown (Mandelbaum et al. 2008; Cunha et al. 2009; Wittman 2009; Bordoloi et al. 2010; Abrahamse et al. 2011), the use of a single number to represent the photo-z leads to biases. }
+
+Photometric redshift templates are generally empiric and have almost none physical meaning in terms of the stellar populations. They are designed for this only goal: measure redshifts, and they are very effective on doing it (see...). But once one haves a measurement of the distance, we ask about what are the physical properties of the galaxies. This cannot be accomplished by a simple template library such as the photometric redshits one. This paper is to create a bridge between the photometric redshifts templates and the stellar population synthesis templates that are defined by a very detailed library of stellar populations with all the physical parameters of galaxies one would want to measure from them.
+
+In this paper, we introduce a technique to derive galaxies masses and other stellar properties using the joint template-redshift probability distribution functions as proxy to the real rest-frame SED of the galaxies.
+
+In section \ref{sec:method} we introduce this new method of stellar properties estimation. In section \ref{sec:library} we define the library parameters involved on the redshift and physical properties involved. In section \ref{sec:simulations} we simulate the recovery of physical properties with our method on simulated data.
+
+ fitting the photo-$z$ templates to apply on real data from the COSMOS survey in section \ref{sec:application}.
 
 
 
-\section{Synthetic library}
-{\bf \color{red} Outline of this section: Tell how we did our synthetic library. MCMC to randomly select ~2000 spectra for each template of BPZ, etc and so on...}
+
+
+
+
+\section{Formalism}
+\label{sec:method}
+
+
+
+The central problem we need to solve is how to estimate the stellar mass $M_\star$ of a galaxy out of its spectral energy distribution (SED), as traced by observed magnitudes $m_\alpha$, where $\alpha = 1 \ldots n_f$ counts the different bands.
+Denoting the observed data by $D$, we ultimately seek to compute  $P(M_\star | D, I)$, the probability distribution function (PDF) of  $M_\star$ given the data and whatever other information $I$ goes into the derivation.\footnote{$I$ formally accounts for things like the initial mass function, stellar evolutionary tracks, reddening law, and other relevant ingredients.}
+
+
+
+A standard approach to this problem is to compare the observed SED to an extensive library of models spanning different star formation histories, metallicity and dust configurations. Let $S_k$ denote a spectrum from this stellar population library, and $k = 1 \ldots n_S$ an index which maps to the parameters used to generate $S_k$. Each model $k$ has its own mass-to-light ratio and thus its own prediction for the stellar mass. The task of computing $P(M_\star | D, I)$ is therefore tantamount to evaluating the probability of each model given the data, $P(S_k | D, I)$. 
+
+This  strategy is known to work well when spectroscopic redshifts are available, which eliminates ambiguities as to which rest-frame wavelengths the $\alpha = 1\ldots n_f$ bands correspond to. \cite{Taylor.etal.2011a}, for instance, used SDSS [?or GAMA?] data to show that precisions of order 0.1--0.2 dex in $\log M_\star$ are achievable from {\it ugriz} photometry, as indeed found in several other studies \citep{Gallazzi.Bell.2009a}. Notwithstanding this success, a potential caveat in this approach is that the realism of such a vast and ad hoc library may be questionable, with many models having no counterpart in the actual galaxy population. 
+The effects of such unrealistic models are bound to be exacerbated when $z$ is not known a priori, and thus also needs to be estimated from the photometry. In this sense, a compact library, empirically calibrated to cover the spectral space spanned by actual galaxies would help alleviating the  effects of color/redshift degeneracies upon the determination of both $z$ and $M_\star$. 
+
+In this paper we combine a library of empirical spectral templates $T_j$ (with $j = 1 \ldots n_T$) with a model library $S_k$  in a method which effectively separates the tasks of estimating $z$ from the estimation of $M_\star$. The idea is to take advantage of the bivariate PDF $P(z_i,T_j | D,I)$ produced by version 2.0 of BPZ (?Benitex..., ?Molino?), which gives the probability of a galaxy being at redshift $z_i$ and of a spectral type $T_j$. The estimation of $M_\star$ (and any other stellar population property of interest) is then carried out comparing each $T_j$ to the models in the library $S_k$, and weighing the results by the corresponding probability given by BPZ. 
+%This methodology translates to the following mathematical formulation:
+The following expression encapsulates this methodology in  mathematical terms:
+
+%In this paper we separate the tasks of estimating $z$ from the estimation of $M_\star$. The idea is to take advantage of the bivariate PDF $P(z_i,T_j | D,I)$ produced by version 2.0 of BPZ (?Benitex..., ?Molino?), which gives the probability of a galaxy being at redshift $z_i$ and of a spectral type $T_j$, drawn from an empirical library of $j = 1 \ldots n_T$ spectra. The estimation of $M_\star$ (and any other stellar population property of interest) is then carried out comparing each $T_j$ to the models in the library $S_k$, and weighing the results by the corresponding probability given by BPZ. This methodology translates to the following mathematical formulation:
+
+\begin{equation}
+\label{eq:Prob_Sk}
+\begin{split}
+P(S_k,z_i|D,I) & = \sum_{j=1}^{n_T} P(S_k,z_i,T_j | D,I) \\
+&  = \sum_{j=1}^{n_T} P(z_i,T_j | D,I) P(S_k|z_i,T_j)
+\end{split}
+\end{equation}
+
+
+%\footnote{\color{red} \bf The second line of eq. \ref{eq:pSk} is due to the probability property $p(A,X | G) = p(X | G) p(A | X)$ where $A=S_k$, $X=z_i,T_j$ and $G=D,I$}
+%With $P(z_i,T_j | D,I)$ entirely given by BPZ, it remains to evaluate $P(S_k|z_i,T_j)$.
+
+\noindent Note that this effectively forces the solution to belong to the color space defined by the empirical templates. In fact, the data are only explicitly used in the computation of $P(z_i,T_j | D,I)$, which we third-party to BPZ, while the evaluation of the models $S_k$ (and thus the estimation of $M_\star$) is entirely based on the comparison with the templates $T_j$, as expressed in the term $P(S_k | z_i,T_j)$. From Bayes theorem, 
+
+%As explained above, the computation of $P(z_i,T_j | D,I)$ is third-partied to BPZ. To evaluate $P(S_k|z_i,T_j)$ we note that, from Bayes theorem, 
+
+\begin{equation}
+\label{eq:prob_model}
+P(S_k | z_i,T_j) \propto P(S_k) P(T_j | S_k,z_i)
+\end{equation}
+
+\noindent where $P(S_k)$ is a prior for the synthetic template library, and $P(T_j | S_k,z_i)$ the likelihood of $T_j$ given the model $S_k$ and for fixed $z_i$, which we assume to be 
+
+\begin{equation}
+\label{eq:probTS}
+P(T_j | S_k, z_i) \propto e^{-\frac{\chi_{i,j,k}^2}{2}}
+\end{equation}
+
+\noindent where
+
+\begin{equation}
+\label{eq:chi2}
+\chi^2_{i, j, k} =  \sum_{\alpha=1}^{n_f} \epsilon_\alpha^{-2} \left( S_{k\alpha}(z_i) - T_{j\alpha}(z_i) \right)^2
+\end{equation}
+
+
+\noindent quantifies the photometric difference between model $S_k$ and template $T_j$ over the filters $\alpha = 1\ldots n_f$. The factor $\epsilon_\alpha^{-2}$ effectively establishes an acceptable difference floor of $\epsilon_\alpha$ magnitudes between template and model for filter $\alpha$. In principle one could associate this factor to the photometric error in filter $\alpha$, but this is not necessary here, since $S_{k,\alpha}$ is not being compared to the original data ($m_\alpha$), but to the template $T_{j,\alpha}$. Moreover, the observational errors were already taken into account (within the BPZ code) in the derivation of $P(z_i,T_j | D,I)$, so the choice of $\epsilon_\alpha$ can be based on other precepts. We experiment with values of $?0.01?$ to 0.1 mag for all bands. These values (which happen to be of the same order of the typical uncertainties in the ALHAMBRA survey) allow us to circumvent occasional difficulties which arise when only one model $S_k$ matches a given template $T_j$, thus distorting the resulting $P(T_j | S_k, z_i)$.
+
+
+Before presenting the empirical and synthetic libraries used in this work it is worth to point out a practical aspect of the method outlined above. Once a redshift grid $z_i$, the filter-set, the choice for $\epsilon_\alpha$, and the $T_j$ and $S_k$ libraries are specified, $\chi^2_{i, j, k}$ and therefore $P(S_k | z_i,T_j)$ can be evaluated {\it independently} of the data. This somewhat counterintuitive property is a direct result of the trick of replacing the observed SED by its BPZ-based decomposition into templates, as described in eq.\ \ref{eq:Prob_Sk}). Hence, even if cumbersome and computationally expensive, this calculation need to be made only once. The method only interfaces with the data via the BPZ-based joint $z_i,T_j$ PDF $P(z_i,T_j | D,I)$.
+
+
+Finally, for completeness, we explain how we use $P(S_k | z_i,T_j)$ to estimate a generic stellar population property $\theta$ (like the mass 
+$M_\star$). The joint PDF of $\theta$ and $z$ can be expanded as follows:
+
+
+\begin{equation}
+\label{eq:Prob_theta}
+\begin{split}
+P(\theta , z_i | D , I) & =  \sum_{k=1}^{n_S} P(\theta , S_k , z_i  | D , I) \\
+& =  \sum_{k=1}^{n_S} P( S_k ,  z_i | D , I) P(\theta | z_i , S_k) \\
+& =  \sum_{k=1}^{n_S} P( S_k ,  z_i | D , I) \delta(\theta - \theta_{i,k})
+\end{split}
+\end{equation}
+
+
+
+\noindent where $P(S_k | z_i,T_j)$ is the same as in eq.\ \ref{eq:Prob_Sk}, and the term $P(\theta | z_i , S_k)$ (whose $D$ and $I$ symbols to the right of the condition-bar are omitted because they are logically superfluous) reduces to a Dirac's delta function centered on the value of $\theta$ corresponding to model $k$ and redshift $z_i$.  Eq.\ \ref{eq:Prob_theta} describes a function with $n_S$ peaks of different amplitudes (although in practice very few will be numerically relevant), which can be binned over for convenience. This PDF can then be marginalized over $z_i$ to obtain the desired $P(\theta | D , I)$.
+
+
+% gives the probability of model $S_k$ yielding a property $\theta$ for redshift $z_i$.\footnote{The combination of $z_i$ and $S_k$ is natural in the case of $M_\star$, an extensive property which depend both on the stellar populations (through the mass-to-light ratio) and the distance (hence $z$).}
+
+
+\section{Application to the BPZ templates}
+\label{sec:fit}
+{\bf {\color{red} Outline of this section: Define the chosen parameters to form $S_k$. Describe the BPZ templates. Describe how we obtain $S_k$ and how we fit it to the BPZ templates.}}
+
+Our method, so far, is very general and can be applied to any kind of {\it photo-z} templates $T_{ij}$. Its results depends mainly on the choice of how we distribute the stellar population spectra $S_k$ that we use to fit $T_{ij}$. This $S_k$ distribution is an analog to a stellar populations prior. If we choose a poor prior, we will end on having poor results. The discussion of how the different kinds of priors interfere on the stellar populations will be discussed on another opportunity.
+
+{\bf {\color{red} $S_k$ explanation}}
+
+In this section, we discuss our choice for obtaining $S_k$ template distributions which is very similar on earlier works such as \cite{Taylor.etal.2011a} and \citep{Brinchmann.etal.2004a}.
+
+For our tests, we adopted a model composed by two exponential bursts with a starting age $t_0$ and e-folding time $\tau$, plus one extinction $A_V$ and one metallicity. The 7 ($N_k = 7$) parameters were that fitted are described on table \ref{tab:ListOfParameters}.
+
+{\bf {\color{red} $T_{ij}$ explanation}}
+
+Our fits only take in account the stellar continuum and dust, so the first step of it is to mask out the emission lines of all $T_{ij}$ template spectra. The 11 empirical templates used by BPZ are shown on figure \ref{fig:bpz_templates} . Since, on BPZ, they are interpolated, the final number of templates $N_j$ is 41 (three linear interpolations between each one).
+
+{\bf {\color{red} Fitting procedure}}
+
+Synthetic magnitudes of the interpolated templates were evaluated for a grid of redshifts using the 20 ALHAMBRA optical filter curves \citep{Molino.etal.2014a}. For each template $T_{ij}$, a probability distribution function (eq. \ref{eq:probTS}) was calculated by sampling the six parameters space (dual burst $t_0$ and e-folding time, extinction and metallicity, see table \ref{tab:ListOfParameters} for a detailed prior). For this paper we used \cite{Bruzual.Charlot.2003a} Simple Stellar Populations (SSPs) with the \cite{Cardelli.Clayton.Mathis.1989a} extinction law with $R_V = 3.1$. 
+
+To speed up the PDF calculation, we used the emcee code \citep{ForemanMackey.etal.2013a} to map the probability space on regions where the probability is not so negligible. The emcee code is a Python code that implements the affine-invariant ensamble sampler for Markov Chain Monte Carlo (MCMC). We randomly initialize 70 walkers and sample the parameter space looking for a set of most probable likelihoods. To achieve that, we run each walker for 3000 steps, removing the first 1000 steps as burn-in phase. Visual inspection of the chains was done to make sure this burn-in phase was met.
+
+
+\begin{figure}
+\label{fig:bpz_templates}
+\resizebox{0.49\textwidth}{!}{\includegraphics{figures/templates_noelines.pdf}}
+\caption{BPZ templates. Emission lines, marked in red, were masked out.}
+\end{figure}
+
 
 \begin{table*}							
 \begin{centering}							
 \begin{tabular}{lccl}							
 \multicolumn{4}{c}{Parameters list and description}\\ \hline							
 Parameter	&	Units	&	min/max values	&	Meaning	\\ \hline
-$t_0^{Y}$	&	yr	&	$6 \times 10^6$ to $6.3 \times 10^9$	&	Age of the younger burst	\\
-$\theta^{Y}$	&	-	&	$0.001$ to $100$	&	$\theta = \tau \times t_0$. Where $\tau$ is burst e-folding time	\\
-$t_0^{O}$	&	yr	&	$10^9$ to $1.76 \times 10^{10}$	&	Age of the older burst	\\
-$\tau^{O}$	&	-	&	$0.001$ to $100$	&	$\theta = \tau \times t_0$. Where $\tau$ is burst e-folding time	\\
-$Z$	&	$[Fe\/H]$	&	$0.0004$ to $0.05$	&	Stellar metallicity	\\
-$\theta_V$	&	-	&	$0$ to $0.2$	&	Extinction. See \cite{Charlot.Fall.2000a} for details.	\\
+$t_0^{Y}$	&	yr	&	$1 \times 10^6$ to $5 \times 10^9$	&	Start time of the younger burst	\\
+$\log \tau^{Y}$	&	-	&	$0.001$ to $1000$	& Younger Burst e-folding time	\\
+$t_0^{O}$	&	yr	&	$5 \times 10^9$ to $t_{\rm Universe} (z)$	&	Start time of the older burst	\\
+$\log \tau^{O}$	&	-	&	$0.001$ to $1000$	& Older Burst e-folding time	\\
+$\log Z$	&	-	&	$0.0004$ to $0.05$	&	Stellar metallicity	\\
+$A_V$	&	-	&	$-0.1$ to $2.0$	&	$V$-band extinction according to \cite{Cardelli.Clayton.Mathis.1989a}	\\
 $f^{Y}$	&	\%	&	$0$ to $100$	&	Light fraction on the younger component	\\
 %%							
 \hline							
@@ -194,14 +319,234 @@ $f^{Y}$	&	\%	&	$0$ to $100$	&	Light fraction on the younger component	\\
 \label{tab:ListOfParameters}							
 \end{table*}							
 
-\section{Simulations}
-{\bf \color{red} We can generate fake data from i.e. SDSS spectroscopy and try to recover the properties of the galaxies. Another way to do is to compare with a simulated light-cone like the one of Merson et al 2013.}
+
+\section{Fitting method validation}
+\label{sec:validation}
+
+To evaluate the precision of the fitting method described on section \ref{sec:fit} is reliable, we ran simulations over mock galaxy catalogs with random gaussian noise added to the magnitudes and checked how far is the input parameters from the output.
+
+For that test, we generated a sample of random 500 models (single and double burst) and evaluated their magnitudes, adding a gaussian noise of 0.05, 0.1 and 0.5 magnitudes. These models were fed as they were BPZ templates to the MCMC fit. Then, the output of the fit is compared with the input parameters used to build them. This comparison is shown on table \ref{tab:InXOut}. The bias is negligible on all values of noise and the variance grows with the added noise, as expected.
+
+\begin{table}										
+\begin{centering}										
+\begin{tabular}{lcccl}										
+%\multicolumn{5}{c}{Parameters list and description}\\ \hline										
+\multicolumn{5}{c}{Single Burst}\\ \hline		\hline								
+noise	&	$\log M/L_B$	&	$\langle \log t \rangle_L$	&	$A_V$	&	$\log Z$	\\	\hline
+0 \footnote{The minimum error for the likelihood, taken in account on the simulations, was 0.05}	&	$0.00 \pm 0.09$	&	$-0.03 \pm 0.08$	&	$0.04 \pm 0.11$	&	$0.02 \pm 0.10$	\\	
+0.05	&	$0.01 \pm 0.13$	&	$-0.05 \pm 0.18$	&	$0.06 \pm 0.23$	&	$0.04 \pm 0.22$	\\	
+0.1	&	$0.01 \pm 0.16$	&	$-0.06 \pm 0.24$	&	$0.05 \pm 0.30$	&	$0.02 \pm 0.31$	\\	
+0.5	&	$0.03 \pm 0.19$	&	$0.04 \pm 0.40$	&	$0.03 \pm 0.43$	&	$0.01 \pm 0.40$	\\	\hline
+\multicolumn{5}{c}{Double Burst}\\ \hline		\hline								
+noise	&	$\log M/L_B$	&	$\langle \log t \rangle_L$	&	$A_V$	&	$\log Z$	\\	\hline
+0	&	$0.00 \pm 0.09$	&	$-0.03 \pm 0.08$	&	$0.04 \pm 0.11$	&	$0.02 \pm 0.10$	\\	
+0.05	&	$0.01 \pm 0.13$	&	$-0.05 \pm 0.18$	&	$0.06 \pm 0.23$	&	$0.04 \pm 0.22$	\\	
+0.1	&	$0.01 \pm 0.16$	&	$-0.06 \pm 0.24$	&	$0.05 \pm 0.30$	&	$0.02 \pm 0.31$	\\	
+0.5	&	$0.03 \pm 0.19$	&	$0.04 \pm 0.40$	&	$0.03 \pm 0.43$	&	$0.01 \pm 0.40$	\\	
+										
+										
+\hline										
+\end{tabular}										
+\end{centering}										
+\caption{Input versus output}										
+\label{tab:InXOut}										
+\end{table}										
+
+
+\begin{figure}
+\label{fig:inout}
+\resizebox{0.49\textwidth}{!}{\includegraphics{/Users/william/workspace/pzT_templates/new_method/plots/bpz_fit_magerr_single_0.0500_lib_list_random_single_z0.00_0.00_nwalk_70_nsamp_1000_nstep_3000/inout.pdf}}
+\caption{mean - real ages, extinction and M/L ratio}
+\end{figure}
+
+%\showthe\columnwidth
+
+
+\section{Our method \ojo OLD}
+%\label{sec:method}
+{\bf \color{red} Explain our methodology. How do I get stellar properties from Galaxy Spectra? This section should be a {\it general} view of the method. An specific approach to this method using x, y and z should be showed on the next section.}
+
+Our method is based on using the photo-$z$ probability distribution functions (PDFs) to estimate  stellar population properties of a galaxy. Its application does not depend on the photo-$z$ code as long as it produces at the end a joint template-redshift PDF.
+
+%and also does not depend on how we believe a galaxy spectral energy distribution is constructed.
+
+The main differences between this approach and other bayesian methods to retrieve stellar population properties in the literature (e.g., \cite{Gallazzi.etal.2005a}, \cite{Bundy.2006a}, \cite{Taylor.etal.2011a} --- see \cite{Walcher.etal.2011a} for a comprehensive review), is that we do not use information derived directly from spectra, like Lick indices, colours, and, more importantly, the spectroscopic redshift. 
+
+%Doing this we increase the number of galaxies being limited only by the magnitude limit of the survey and not by the expensive spectroscopic time and lack of completeness (?is this true?). On the other hand, we should study how the redshift misestimation influences the physical properties estimation.
+
+We build our method around an empirically calibrated spectral template library $T_{j}$ ($j=1,\ldots N_{T}$) used by a photo-$z$ code (e.g.,  BPZ \citep{Benitez.2000a}, Le Phare \citep{Arnouts.etal.1999a}, ZEBRA \cite{Feldmann.etal.2006a}, ArborZ \cite{Gerdes.etal.2010a})  which yields a template-redshift PDF $P_{i, j}$, where $j$ stands for template $T_j$ and $i$ denotes the redshift $z_i=z_1+(i-1) \Delta z$.
+
+A photo-$z$ PDF can be defined in different ways. In this paper we define the probability of a galaxy with observed colors $\mathbf{C} = \mathbf{m} - m_0$ being of a spectral type $T$ and at redshift $z$ by the equation:
+
+\begin{equation}
+\label{eq:pzT}
+p(z,T|\mathbf{C}, m_0) \propto p(z,T|m_0) p(\mathbf{C}|z,T,m_0)
+\end{equation}
+
+\noindent where the prior $p(z,T|m_0)$ is a way to remove unrealistic solutions by giving them very low weights and $p(\mathbf{C}|z,T)$ is likelihood of $\mathbf{C}$ given $z$ and $T$.
+For a more detailed and formal definition of the photo-$z$ likelihoods, including the definitions used on this paper, we refer the reader to Section 3 of \cite{Benitez.2000a}.
+
+So, if we have a spectral library $S_k$ with defined stellar population parameters, e.g., age, e-folding time, metallicity, extinction, etc, we can evaluate the stellar-parameter PDF $p(S|\mathbf{C}, m_0)$. $S_{k}$ can be very large and may contain models which are not realistic, in the sense of not being present in the galaxy population. It is therefore not
+practical to calculate directly these probability, using e.g. BPZ or other similar codes since the color/redshifts degenaracies will be much worse than for a compact, well-calibrated empirical library. {\bf \color{red} citation-needed}
+
+We therefore try to solve the problem by forcing the solutions to belong to the color space defined by the empirical templates and the magnitude/redshift prior $p(z,T|m_{0})$ so the probability of the $S_k$ template be the true template for a galaxy with colors $\mathbf{C}$ and apparent magnitude $m_0$ can be written as:
+
+\begin{equation}
+\label{eq:pSk}
+\begin{split}
+p(S_{k},z_{i}|\mathbf{C},m_{0}) & =\sum_{j=1}^{N_{T}}p(S_{k},z_{i},T_{j}|\mathbf{C},m_{0}) \\
+& =\sum_{j=1}^{N_{T}}p(z_{i},T_{j}|\mathbf{C},m_{0})p(S_{k}|z_{i},T_{j})
+\end{split}
+\end{equation}
+\footnote{\color{red} \bf The second line of eq. \ref{eq:pSk} is due to the probability property $p(A,X|D) = p(X|D) p(A|X)$ where $A=S_k$, $X=z_i,T_j$ and $D=C,m_0$}
+
+Note that the probability of $S_k$ is given by % its comparison with the $T_{j}$ template, which is given by:
+
+\begin{equation}
+\label{eq:prob_model}
+p(S_{k}|z_{i},T_{j})\propto p_{I}(S_{k})p(T_{j}|S_{k},z_{i})
+\end{equation}
+
+\noindent where $p_{I}(S_{k})$ is a prior for the synthetic template library. It can be flat, or we can use it to modulate the parameter estimation.
+
+Finally, we evaluate the factor $p(T_{j}|S_{k},z_{i})$ as:
+\begin{equation}
+p(T_{j}|S_{k}, z_{i}) \propto e^{-\frac{\chi^2}{2}}
+\end{equation}
+
+\noindent where
+
+\begin{equation}
+\chi^2_{i, j, k} = \omega^2 \sum_\alpha \left( S_{k\alpha}(z_i) - T_{j\alpha}(z_i) \right)^2
+\end{equation}
+
+\noindent where $\omega$ is a fudge factor introduced to scale the contribution for each model on the distribution of the eq. \ref{eq:prob_model} The impact of this fudge factor will be studied in more detail on section \ref{sec:fit}. Note that the quantity associated to this factor and even the choice of a Gaussian distribution are completely the choice of the author and other functions (like the top-hat function used by {\bf \color{red} ???CID ref Bica???}) would be as correct as a Gaussian.
+
+
+
+
+\section{Synthetic library}
+\label{sec:library}
+{\bf \color{red} Outline of this section: Tell how we did our synthetic library. MCMC to randomly select ~200 spectra for each template of BPZ, etc and so on...
+
+Here goes basically how we modeled $S_k$ to be applied on the next sections. The point of this paper is that we developed a general method and {\it suggested} an approach to it, but one can give different views to it by changing how $S_k$ is defined.}
+
+Our method, so far, is very general and can be applied to any kind of {\it photo-z} templates $T_{ij}$. Its results depends mainly on the choice of how we distribute the stellar population spectra $S_k$ that we use to fit $T_{ij}$. This $S_k$ distribution is an analog to a stellar populations prior. If we choose a poor prior, we will end on having poor results. The discussion of how the different kinds of priors interfere on the stellar populations will be discussed on the paper N.
+
+{\it {\bf Should this paragraph moved to method section?} Since we are fitting stellar populations to templates that haves emission lines, we mask them beforehand. This is the only change that we do to the templates. All the other steps are done on the cook of the stellar spectra models.}
+
+To create a galaxy stellar spectra model $S_k$ for equation ???, we chosen to create a model with two random exponential bursts with a random metallicity and a random extinction. For our tests we used \cite{Bruzual.Charlot.2003a} Simple Stellar Populations (SSPs) with the \cite{Cardelli.Clayton.Mathis.1989a} extinction law with $R_V = 3.1$. The input parameters for the models are shown on table \ref{tab:ListOfParameters}. {\bf Expand this paragraph. Say why although this is a matter of choice, it serves as a good model to a galaxy stellar spectrum. Do a figure with the convex hull of the BPZ templates compared to the stellar populations library?}
+
+The spectra of an composite stellar population $s_k$ can be written as:
+
+\begin{equation}
+\label{eq:csp_spec}
+s_{k \lambda} =  r_\lambda \int_0^{t_0} l_\lambda (t, Z) \psi (t) dt
+\end{equation}
+
+where $l_\lambda(t, Z)$ is the SSP luminosity in of a given age $t$ and metallicity $Z$ and $\psi(t) dt = dM(t)$ is the mass formed between $t$ and $t + dt$ and $t_0$ is the age of the Universe at the redshift $z$ in which we are fitting our templates. $r_\lambda$ is the reddening factor due to the stellar extinction given by:
+
+\begin{equation}
+\label{eq:red_term}
+r_\lambda = 10^{-0.4 A_V q_\lambda}
+\end{equation}
+
+where $q_\lambda$ depends on the extinction law. 
+%The units of $s_{k, \lambda}$ are $\frac{ergs}{s cm^2 M_\odot}$.
+
+We choose to work with magnitudes on the AB system. For a more detailed review on different magnitude systems consider reading \cite{Casagrande.VandenBerg.2014a} and \cite{Blanton.etal.2003c}.
+
+The $S_{k \alpha}$ AB magnitude of $s_k$ on filter $\alpha$ is given by:
+
+\begin{equation}
+\label{eq:mag_filter}
+\begin{split}
+S_{k \alpha} & = \frac{\int_\lambda \lambda R_{\lambda \alpha} s_{k \lambda} d\lambda}{\int_\lambda \lambda^{-1} R_{\lambda \alpha}  d\lambda}  - 2.41 \\
+& = \frac{\int_\lambda \lambda  R_{\lambda \alpha}  r_\lambda \int_0^{t_0} l_\lambda (t, Z) \psi (t) dt d\lambda}{\int_\lambda \lambda^{-1} R_{\lambda \alpha} d\lambda} - 2.41
+\end{split}
+\end{equation}
+
+Where $R_{\lambda \alpha}$ is the response curve for the filter $\alpha$.
+
+To simplify the fitting of the $N_T \times N_z \times N_\alpha$ matrix, we substituted the reddening term on equation \ref{eq:red_term} by its Taylor expansion on $a_\alpha = \frac{\int q_\lambda R_{\lambda \alpha} d \lambda}{\int R_{\lambda \alpha} d \lambda}$:
+\begin{equation}
+\label{eq:taylor_exp}
+r_\lambda = \sum_{i=0}^\infty \frac{(-0.4 A_V \ln 10)^i}{i!} 10^{-0.4 A_V a_\alpha} (q_\lambda - a_\alpha)^i
+\end{equation}
+
+This makes the $A_V$ term going outside the \ref{eq:mag_filter} integral, enabling us to have the $\lambda$ integral calculated beforehand, making the fitting process faster.
+
+\begin{equation}
+\label{eq:csp_taylor}
+\begin{split}
+S_{k \alpha} = \sum_{i=0}^\infty \frac{(-0.4 A_V \ln 10)^i}{i!} 10^{-0.4 A_V a_\alpha} & \\
+ \int_\lambda (q_\lambda - a_\alpha)^i \int_0^{t_0} l_\lambda (t, Z) \psi (t)  dt d\lambda
+ \end{split}
+\end{equation}
+
+
+\begin{figure}
+\resizebox{0.49\textwidth}{!}{\includegraphics{figures/RedTerm_Taylor_N10.pdf}}
+\caption{Actually $N=6$ is probably too much.}
+\end{figure}
+
+\begin{figure*}
+\resizebox{0.98\textwidth}{!}{\includegraphics{/Users/william/workspace/pzT_templates/new_method/plots/bpz_fit_magerr_single_0.0500_lib_eB11_z0.00_0.00_nwalk_70_nsamp_1000_nstep_3000/template_fit_paper.pdf}}
+\caption{Fits of the 11 BPZ templates at $z=0$. The PDFs are color-coded by their error bars: red corresponds to 0.5 mag, green to 0.1 mag and blue to 0.05 mag}
+\end{figure*}
+
+
+
+\section{{\it photo-z} templates fit}
+\label{sec:fit}
+
+The $T_{ij\alpha}$ fluxes are then fitted using the {\it \bf emcee} code \citep{ForemanMackey.etal.2013a}.
+% For each redshift $z_i$ and template $T_j$ on the $z \versus T$ space we fit the corresponding {\it photos-z} synthetic magnitudes by running an MCMC 
+
+
+
+
+%\section{Simulations}
+%\label{sec:simulation}
+%{\bf \color{red} We can generate fake data from i.e. SDSS spectroscopy and try to recover the properties of the galaxies. Another way to do is to compare with a simulated light-cone like the one of Merson et al 2013.}
+%
+%Send to AMB SDSS spectra ALHAMBRA synthetic magnitudes and ask to run BPZ?
+
+\section{Bayesian detection limits. The PDF of $z^{max}$}
+
+In this section we set an probabilistic method for evaluate the maximum redshift of detection $z^{max}_{ij}$ for a flux-limited survey like the ALHAMBRA. This $z^{max}$ is necessary for determining the maximum volume $V_{max}$ on which a galaxy is detected within the survey characteristics. This factor was introduced by \cite{Schmidt.1968a} and is important to weight the galaxies masses and luminosities to be more ``fair'' with the ones with low surface brightness (and hence higher $1/V^{max}$ ) than to the very surface-brightness galaxies that can be detected at higher redshifts.
+
+{\bf \color{red} We get the absolute magnitude $M_{ij}$ for each galaxy from BPZ. I will dig on BPZ how it does this, there should be something to transform the BPZ templates fluxes to some physical unit.}
+
+For a galaxy, we have an absolute magnitude $M^0_{ij}$ that is function of the redshift $z_i$ and template $T_j$. Note that the $0$ index denotes that this is the magnitude on the normalization filter chosen {\it a priori}. For a clear notation, we will omit this index from now on.
+
+ From this absolute magnitude, one can calculate the apparent magnitude from the equation:
+
+\begin{equation}
+m = M + 5 \log_{10} ( d_L - 1)
+\end{equation}
+
+\noindent if we substitute the apparent magnitude for the magnitude limit which our survey is complete and the absolute magnitude for our $M_ij$, we can evaluate the maximum luminosity distance for each galaxy as function of $i$ and $j$:
+
+\begin{equation}
+\label{eq:d_L}
+d^{\textrm{max}}_{L ij} = 10 ^ {\frac{m_{\textrm{max}} - M_{ij}}{5} + 1}
+\end{equation}
+
+\noindent from $d^{\textrm{max}}_{L ij}$ we evaluate $z^{\textrm{max}}_{ij}$ by creating a closely-spaced set of values for $d_L(z)$ and getting $z$ of the nearest $d_L$ of the result of equation \ref{eq:d_L}.
+
+\section{Test}
+construir 11 ou 81 modelos a partir dos bst matches dos templates do txitxo
 
 \section{Comparison with real data}
+\label{sec:application}
 {\bf \color{red} Which data will we compare our results to??}
 
+COSMOS?
+
+
 \section*{Acknowledgments}
-W. S. acknowledge support and hospitality of the IAG-USP for short term visits. 
+W. S. acknowledge support and hospitality of the IAG-USP for short term visits. This work has made use of the computing facilities of the Laboratory of Astroinformatics (IAG/USP, NAT/Unicsul), whose purchase was made possible by the Brazilian agency FAPESP (grant 2009/54006-4) and the INCT-A.
 
 
 \bibliography{references}

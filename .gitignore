@@ -60,7 +60,12 @@ no_elines/
 
 # Plots
 *.png
+*.pdf
 
 # Numpy temp files
 *.npz
 *.npy
+
+# Ouput files
+*.txt
+*.AB
